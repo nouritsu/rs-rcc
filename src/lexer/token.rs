@@ -2,7 +2,9 @@ use super::helper::*;
 use logos::Logos;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq, Eq)]
-#[logos(skip r"[ \t\f\n]+")]
+#[logos(skip r"[ \t\f\r\n]+")] // Spaces
+#[logos(skip r"//[^\r\n]*(\r\n|\n)?")] // Single Line Comments
+#[logos(skip r"/\*([^*]|\*[^/])+\*/")] // Multi Line Comments
 pub enum Token<'src> {
     /* Keywords */
     #[token("int")]
