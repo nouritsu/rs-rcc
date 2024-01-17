@@ -25,7 +25,7 @@ where
 {
     just(Token::KwReturn)
         .ignore_then(expr())
-        .then_ignore(just(Token::SemiColon))
+        .then_ignore(just(Token::Semicolon))
         .map(|exp| Stmt::Return(exp))
         .boxed()
 }
@@ -39,7 +39,7 @@ where
             Token::Identifier(s) => s
         })
         .then(expr())
-        .then_ignore(just(Token::SemiColon))
+        .then_ignore(just(Token::Semicolon))
         .map(|((_ty, var), exp)| Stmt::Assign(var.to_owned(), exp))
         .boxed()
 }
@@ -64,7 +64,7 @@ where
     I: ValueInput<'src, Token = Token<'src>, Span = SimpleSpan>,
 {
     let literal = select! {
-        Token::LitInteger(i) => Expr::LiteralInteger(i as u32),
+        Token::LitInteger(i) => Expr::LiteralInteger(i),
     }
     .boxed();
 
@@ -73,5 +73,20 @@ where
     }
     .boxed();
 
-    choice((literal, variable))
+    recursive(|expr| {
+        let atom = literal
+            .or(expr.delimited_by(just(Token::OpenParen), just(Token::CloseParen)))
+            .or(variable)
+            .boxed();
+
+        let unary = just(Token::Minus)
+            .or(just(Token::Exclamation))
+            .or(just(Token::Tilde))
+            .repeated()
+            .foldr(atom, |op, rhs| {
+                Expr::Unary(op.try_into().expect("infallible"), Box::new(rhs))
+            });
+
+        unary
+    })
 }

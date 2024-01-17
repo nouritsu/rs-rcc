@@ -2,7 +2,7 @@ pub mod lexer;
 pub mod parser;
 pub mod common {
     pub use super::lexer::Token;
-    pub use super::parser::{Expr, Stmt};
+    pub use super::parser::{Expr, Operator, Stmt};
 }
 pub mod codegen;
 

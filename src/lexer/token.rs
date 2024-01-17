@@ -13,7 +13,7 @@ pub enum Token<'src> {
 
     /* Literals */
     #[regex(r"[0-9]+|0x[0-9a-fA-F]+|0b[01]+", |lex| lit_int(lex.slice()))]
-    LitInteger(u128),
+    LitInteger(u32),
 
     /* Miscellaneous */
     #[regex(r"[a-zA-Z_][0-9a-zA-Z_]*")]
@@ -33,5 +33,14 @@ pub enum Token<'src> {
     CloseBrace,
 
     #[token(";")]
-    SemiColon,
+    Semicolon,
+
+    #[token("~")]
+    Tilde,
+
+    #[token("-")]
+    Minus,
+
+    #[token("!")]
+    Exclamation,
 }
