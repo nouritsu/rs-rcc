@@ -7,5 +7,6 @@ pub mod common {
 pub mod codegen;
 
 // Re-Exports
+pub use codegen::Codegen;
 pub use lexer::Token;
 pub use parser::parser;
