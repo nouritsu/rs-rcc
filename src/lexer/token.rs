@@ -15,7 +15,7 @@ pub enum Token<'src> {
 
     /* Literals */
     #[regex(r"[0-9]+|0x[0-9a-fA-F]+|0b[01]+", |lex| lit_int(lex.slice()))]
-    LitInteger(u32),
+    LitInteger(u64),
 
     /* Miscellaneous */
     #[regex(r"[a-zA-Z_][0-9a-zA-Z_]*")]
@@ -42,6 +42,15 @@ pub enum Token<'src> {
 
     #[token("-")]
     Minus,
+
+    #[token("+")]
+    Plus,
+
+    #[token("*")]
+    Star,
+
+    #[token("/")]
+    Slash,
 
     #[token("!")]
     Exclamation,

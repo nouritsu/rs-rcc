@@ -1,14 +1,14 @@
-pub fn lit_int(s: &str) -> Result<u32, ()> {
+pub fn lit_int(s: &str) -> Result<u64, ()> {
     {
         if s.starts_with("0x") {
-            u32::from_str_radix(&s[2..], 16)
+            u64::from_str_radix(&s[2..], 16)
         } else if s.starts_with("0b") {
             println!("{}\t{}", s, &s[2..]);
-            u32::from_str_radix(&s[2..], 2)
+            u64::from_str_radix(&s[2..], 2)
         } else if s.starts_with("0") && s.len() >= 2 {
-            u32::from_str_radix(&s[1..], 8)
+            u64::from_str_radix(&s[1..], 8)
         } else {
-            u32::from_str_radix(&s, 10)
+            u64::from_str_radix(&s, 10)
         }
     }
     .map_err(|_| ())

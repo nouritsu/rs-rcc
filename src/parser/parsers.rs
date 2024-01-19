@@ -87,6 +87,38 @@ where
                 Expr::Unary(op.try_into().expect("infallible"), Box::new(rhs))
             });
 
-        unary
+        let product = unary
+            .clone()
+            .foldl(
+                choice((just(Token::Slash), just(Token::Star)))
+                    .then(unary)
+                    .repeated(),
+                |lhs, (op, rhs)| {
+                    Expr::Binary(
+                        Box::new(lhs),
+                        op.try_into().expect("infallible"),
+                        Box::new(rhs),
+                    )
+                },
+            )
+            .boxed();
+
+        let sum = product
+            .clone()
+            .foldl(
+                choice((just(Token::Plus), just(Token::Minus)))
+                    .then(product)
+                    .repeated(),
+                |lhs, (op, rhs)| {
+                    Expr::Binary(
+                        Box::new(lhs),
+                        op.try_into().expect("infallible"),
+                        Box::new(rhs),
+                    )
+                },
+            )
+            .boxed();
+
+        sum
     })
 }
