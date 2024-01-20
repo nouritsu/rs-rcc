@@ -63,6 +63,14 @@ fn expr<'src, I>() -> impl Parser<'src, I, Expr, extra::Err<Rich<'src, Token<'sr
 where
     I: ValueInput<'src, Token = Token<'src>, Span = SimpleSpan>,
 {
+    let bin = |lhs: Expr, (op, rhs): (Token, Expr)| {
+        Expr::Binary(
+            Box::new(lhs),
+            op.try_into().expect("infallible"),
+            Box::new(rhs),
+        )
+    };
+
     let literal = select! {
         Token::LitInteger(i) => Expr::LiteralInteger(i),
     }
@@ -93,13 +101,7 @@ where
                 choice((just(Token::Slash), just(Token::Star)))
                     .then(unary)
                     .repeated(),
-                |lhs, (op, rhs)| {
-                    Expr::Binary(
-                        Box::new(lhs),
-                        op.try_into().expect("infallible"),
-                        Box::new(rhs),
-                    )
-                },
+                bin,
             )
             .boxed();
 
@@ -109,16 +111,44 @@ where
                 choice((just(Token::Plus), just(Token::Minus)))
                     .then(product)
                     .repeated(),
-                |lhs, (op, rhs)| {
-                    Expr::Binary(
-                        Box::new(lhs),
-                        op.try_into().expect("infallible"),
-                        Box::new(rhs),
-                    )
-                },
+                bin,
             )
             .boxed();
 
-        sum
+        let comparison1 = sum
+            .clone()
+            .foldl(
+                choice((
+                    just(Token::GreaterEqual),
+                    just(Token::LesserEqual),
+                    just(Token::GreaterThan),
+                    just(Token::LesserThan),
+                ))
+                .then(sum)
+                .repeated(),
+                bin,
+            )
+            .boxed();
+
+        let comparison2 = comparison1
+            .clone()
+            .foldl(
+                choice((just(Token::NotEquals), just(Token::EqualsEquals)))
+                    .then(comparison1)
+                    .repeated(),
+                bin,
+            )
+            .boxed();
+
+        let logical_and = comparison2
+            .clone()
+            .foldl(just(Token::AndAnd).then(comparison2).repeated(), bin)
+            .boxed();
+
+        let logical_or = logical_and
+            .clone()
+            .foldl(just(Token::OrOr).then(logical_and).repeated(), bin);
+
+        logical_or
     })
 }

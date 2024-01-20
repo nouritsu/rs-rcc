@@ -54,4 +54,28 @@ pub enum Token<'src> {
 
     #[token("!")]
     Exclamation,
+
+    #[token("&&")]
+    AndAnd,
+
+    #[token("||")]
+    OrOr,
+
+    #[token("==")]
+    EqualsEquals,
+
+    #[token("!=")]
+    NotEquals,
+
+    #[token(">")]
+    GreaterThan,
+
+    #[token("<")]
+    LesserThan,
+
+    #[token(">=")]
+    GreaterEqual,
+
+    #[token("<=")]
+    LesserEqual,
 }
