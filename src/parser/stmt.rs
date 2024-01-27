@@ -10,18 +10,18 @@ pub enum Stmt<'src> {
 }
 
 impl<'src> Codegen for Spanned<Stmt<'src>> {
-    fn code_gen(&self) -> String {
+    fn code_gen(&self, i: &mut usize) -> String {
         match &self.0 {
-            Stmt::Return(expr) => expr.code_gen() + "ret\n",
+            Stmt::Return(expr) => expr.code_gen(i) + "ret\n",
             Stmt::Declare(_, _) => todo!("declare statement"),
-            Stmt::Expression(expr) => expr.code_gen(),
+            Stmt::Expression(expr) => expr.code_gen(i),
             Stmt::Function(name, body) => {
                 format!(
                     ".globl {}\n{}:\n{}",
                     name,
                     name,
                     body.iter()
-                        .map(|stmt| stmt.code_gen())
+                        .map(|stmt| stmt.code_gen(i))
                         .fold(String::new(), |acc, s| acc + &s)
                 )
             }

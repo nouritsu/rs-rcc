@@ -13,13 +13,12 @@ pub enum Expr<'src> {
 }
 
 impl<'src> Codegen for Spanned<Expr<'src>> {
-    fn code_gen(&self) -> String {
-        let mut i = 0usize;
+    fn code_gen(&self, i: &mut usize) -> String {
         match &self.0 {
             Expr::LiteralInteger(i) => format!("mov ${}, %rax\n", i),
 
             Expr::Unary(op, rhs) => {
-                rhs.code_gen()
+                rhs.code_gen(i)
                     + match op {
                         Operator::Minus => "neg %rax\n",
                         Operator::LogicalNot => "cmpl $0, %rax\nmov $0, %rax\nsete %al\n",
@@ -32,8 +31,8 @@ impl<'src> Codegen for Spanned<Expr<'src>> {
                 Operator::Plus | Operator::Multiply => {
                     format!(
                         "{}push %rax\n{}pop %rcx\n{} %rcx, %rax\n",
-                        lhs.code_gen(),
-                        rhs.code_gen(),
+                        lhs.code_gen(i),
+                        rhs.code_gen(i),
                         match op {
                             Operator::Plus => "add",
                             Operator::Multiply => "imul",
@@ -44,15 +43,15 @@ impl<'src> Codegen for Spanned<Expr<'src>> {
                 Operator::Minus => {
                     format!(
                         "{}push %rax\n{}pop %rcx\nsub %rcx, %rax\n",
-                        rhs.code_gen(),
-                        lhs.code_gen()
+                        rhs.code_gen(i),
+                        lhs.code_gen(i)
                     )
                 }
                 Operator::Divide => {
                     format!(
                         "{}push %rax\n{}pop %rcx\ncqo\nidiv %rcx\n",
-                        rhs.code_gen(),
-                        lhs.code_gen()
+                        rhs.code_gen(i),
+                        lhs.code_gen(i)
                     )
                 }
                 Operator::EqEq
@@ -63,8 +62,8 @@ impl<'src> Codegen for Spanned<Expr<'src>> {
                 | Operator::Lt => {
                     format!(
                         "{}push %rax\n{}pop %rcx\ncmp %rax, %rcx\nmov $0, %rax\n{} %al\n",
-                        lhs.code_gen(),
-                        rhs.code_gen(),
+                        lhs.code_gen(i),
+                        rhs.code_gen(i),
                         match op {
                             Operator::EqEq => "sete",
                             Operator::Ne => "setne",
@@ -77,26 +76,26 @@ impl<'src> Codegen for Spanned<Expr<'src>> {
                     )
                 }
                 Operator::LogicalAnd => {
-                    let l1 = label(&mut i);
-                    let l2 = label(&mut i);
+                    let l1 = label(i);
+                    let l2 = label(i);
 
                     format!(
                         "{}cmp $0, %rax\njne {}\njmp {}\n{}:\n{}cmp $0, %rax\nmov $0, %rax\nsetne %al\n{}:\n",
-                        lhs.code_gen(),
+                        lhs.code_gen(i),
                         l1, l2, l1,
-                        rhs.code_gen(),
+                        rhs.code_gen(i),
                         l2,
                     )
                 }
                 Operator::LogicalOr => {
-                    let l1 = label(&mut i);
-                    let l2 = label(&mut i);
+                    let l1 = label(i);
+                    let l2 = label(i);
 
                     format!(
                         "{}cmp $0, %rax\nje {}\nmov $1, %rax\njmp {}\n{}:\n{}cmp $0, %rax\nmov $0, %rax\n setne %al\n{}:\n",
-                        lhs.code_gen(),
+                        lhs.code_gen(i),
                         l1, l2, l1,
-                        rhs.code_gen(),
+                        rhs.code_gen(i),
                         l2
                     )
                 }
@@ -108,6 +107,15 @@ impl<'src> Codegen for Spanned<Expr<'src>> {
             Expr::Variable(_) => todo!("variable expression"),
 
             Expr::Error => unreachable!("reached error branch of expr codegen"),
+        }
+    }
+}
+
+impl<'src> Expr<'src> {
+    pub fn as_lvalue(&self) -> Option<&'src str> {
+        match self {
+            Expr::Variable(s) => Some(s),
+            _ => None,
         }
     }
 }

@@ -1,5 +1,5 @@
 use crate::Token;
-use chumsky::prelude::*;
+use chumsky::{prelude::*, text::digits};
 
 pub type Span = SimpleSpan<usize>;
 
@@ -7,12 +7,12 @@ pub fn lexer<'src>(
 ) -> impl Parser<'src, &'src str, Vec<(Token<'src>, Span)>, extra::Err<Rich<'src, char, Span>>> {
     let literal = {
         let int = choice((
-            text::int(10).map(|s| (10, s)),
-            just("0").ignore_then(text::int(8)).map(|s| (8, s)),
-            just("0b").ignore_then(text::int(2)).map(|s| (2, s)),
-            just("0x").ignore_then(text::int(16)).map(|s| (16, s)),
+            just("0x").ignore_then(digits(16).to_slice().map(|num| (16, num))),
+            just("0b").ignore_then(digits(2).to_slice().map(|num| (2, num))),
+            just("0").ignore_then(digits(8).to_slice().map(|num| (8, num))),
+            text::int(10).map(|num| (10, num)),
         ))
-        .map(|(base, num)| u64::from_str_radix(num, base).expect("infallible"))
+        .map(|(radix, src)| u64::from_str_radix(src, radix).expect("infallible"))
         .map(Token::LitInteger);
 
         int
@@ -58,13 +58,27 @@ pub fn lexer<'src>(
         })
         .boxed();
 
-    //TODO: comment lexer
+    let comment = {
+        let sl = just("//")
+            .then(any().and_is(text::newline().not()).repeated())
+            .padded()
+            .ignored();
+
+        let ml = just("/*")
+            .then(any().and_is(just("*/").not()).repeated())
+            .map(|_| println!("HEY"))
+            .then(just("*/"))
+            .padded()
+            .ignored();
+
+        ml.or(sl)
+    };
 
     let token = choice((literal, symbol, ident));
 
     token
         .map_with(|tok, e| (tok, e.span()))
-        // .padded_by(comment.repeated())
+        .padded_by(comment.repeated())
         .padded()
         .recover_with(skip_then_retry_until(any().ignored(), end()))
         .repeated()

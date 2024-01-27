@@ -36,7 +36,7 @@ fn main() {
                     args.output,
                     stmts
                         .iter()
-                        .map(|stmt| stmt.code_gen())
+                        .map(|stmt| stmt.code_gen(&mut 0))
                         .fold(String::new(), |s, x| s + &x),
                 )
                 .expect("failed to write to output file");
