@@ -1,6 +1,7 @@
 use ariadne::{sources, Color, Label, Report, ReportKind};
 use chumsky::{input::Input, Parser};
 use clap::Parser as CLParser;
+use color_eyre::eyre;
 use rcc::{codegen::Codegen, lexer::lexer, parser::parser};
 use std::{fs, path::PathBuf};
 
@@ -17,7 +18,9 @@ struct Args {
     print_ast: bool,
 }
 
-fn main() {
+fn main() -> eyre::Result<()> {
+    color_eyre::install()?;
+
     let args = Args::parse();
 
     let src = fs::read_to_string(&args.file).expect("unable to read input file");
@@ -32,14 +35,8 @@ fn main() {
                 .into_output_errors();
 
             if let Some((stmts, _)) = ast {
-                fs::write(
-                    args.output,
-                    stmts
-                        .iter()
-                        .map(|stmt| stmt.code_gen(&mut 0))
-                        .fold(String::new(), |s, x| s + &x),
-                )
-                .expect("failed to write to output file");
+                fs::write(args.output, stmts.code_gen(&mut 0))
+                    .expect("failed to write to output file");
             };
 
             parse_errs
@@ -73,4 +70,6 @@ fn main() {
                 .print(sources([(file_name.clone(), src.clone())]))
                 .expect("unable to print errors")
         });
+
+    Ok(())
 }
