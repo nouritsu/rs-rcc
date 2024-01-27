@@ -37,13 +37,6 @@ fn stmt<'tokens, 'src: 'tokens>() -> impl Parser<
         .map_with(|((_ty, var), expr), e| (Stmt::Declare(var, expr), e.span()))
         .boxed();
 
-    let stmt_assign = ident
-        .then_ignore(just(Token::Equals))
-        .then(expr())
-        .then_ignore(just(Token::Semicolon))
-        .map_with(|(name, expr), e| (Stmt::Assign(name, expr), e.span()))
-        .boxed();
-
     let stmt_expr = expr()
         .then_ignore(just(Token::Semicolon))
         .map_with(|expr, e| (Stmt::Expression(expr), e.span()))
@@ -54,7 +47,7 @@ fn stmt<'tokens, 'src: 'tokens>() -> impl Parser<
         .then_ignore(just(Token::OpenParen))
         .then_ignore(just(Token::CloseParen))
         .then(
-            choice((stmt_assign, stmt_declare, stmt_return, stmt_expr))
+            choice((stmt_declare, stmt_return, stmt_expr))
                 .repeated()
                 .collect()
                 .delimited_by(just(Token::OpenBrace), just(Token::CloseBrace)),
@@ -218,7 +211,21 @@ fn expr<'tokens, 'src: 'tokens>() -> impl Parser<
                 )
                 .boxed();
 
-            logical_or
+            let assignment = logical_or.clone().foldl_with(
+                just(Token::Equals).then(logical_or).repeated(),
+                |lhs, (op, rhs), e| {
+                    (
+                        Expr::Binary(
+                            Box::new(lhs),
+                            op.try_into().expect("infallible"),
+                            Box::new(rhs),
+                        ),
+                        e.span(),
+                    )
+                },
+            );
+
+            assignment
         };
 
         binary.labelled("expression")

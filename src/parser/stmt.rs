@@ -5,7 +5,6 @@ use crate::codegen::Codegen;
 pub enum Stmt<'src> {
     Return(Spanned<Expr<'src>>),
     Declare(&'src str, Option<Spanned<Expr<'src>>>),
-    Assign(&'src str, Spanned<Expr<'src>>),
     Expression(Spanned<Expr<'src>>),
     Function(&'src str, Vec<Spanned<Self>>),
 }
@@ -15,7 +14,6 @@ impl<'src> Codegen for Spanned<Stmt<'src>> {
         match &self.0 {
             Stmt::Return(expr) => expr.code_gen() + "ret\n",
             Stmt::Declare(_, _) => todo!("declare statement"),
-            Stmt::Assign(_, _) => todo!("assign statement"),
             Stmt::Expression(expr) => expr.code_gen(),
             Stmt::Function(name, body) => {
                 format!(

@@ -1,7 +1,7 @@
 use ariadne::{sources, Color, Label, Report, ReportKind};
 use chumsky::{input::Input, Parser};
 use clap::Parser as CLParser;
-use rs_rcc::{codegen::Codegen, lexer::lexer, parser::parser};
+use rcc::{codegen::Codegen, lexer::lexer, parser::parser};
 use std::{fs, path::PathBuf};
 
 #[derive(CLParser)]

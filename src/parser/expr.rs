@@ -17,6 +17,7 @@ impl<'src> Codegen for Spanned<Expr<'src>> {
         let mut i = 0usize;
         match &self.0 {
             Expr::LiteralInteger(i) => format!("mov ${}, %rax\n", i),
+
             Expr::Unary(op, rhs) => {
                 rhs.code_gen()
                     + match op {
@@ -26,6 +27,7 @@ impl<'src> Codegen for Spanned<Expr<'src>> {
                         _ => unreachable!("reached default branch of unary expression codegen"),
                     }
             }
+
             Expr::Binary(lhs, op, rhs) => match op {
                 Operator::Plus | Operator::Multiply => {
                     format!(
@@ -39,7 +41,6 @@ impl<'src> Codegen for Spanned<Expr<'src>> {
                         }
                     )
                 }
-
                 Operator::Minus => {
                     format!(
                         "{}push %rax\n{}pop %rcx\nsub %rcx, %rax\n",
@@ -47,7 +48,6 @@ impl<'src> Codegen for Spanned<Expr<'src>> {
                         lhs.code_gen()
                     )
                 }
-
                 Operator::Divide => {
                     format!(
                         "{}push %rax\n{}pop %rcx\ncqo\nidiv %rcx\n",
@@ -55,8 +55,7 @@ impl<'src> Codegen for Spanned<Expr<'src>> {
                         lhs.code_gen()
                     )
                 }
-
-                Operator::Eq
+                Operator::EqEq
                 | Operator::Ne
                 | Operator::Ge
                 | Operator::Gt
@@ -67,7 +66,7 @@ impl<'src> Codegen for Spanned<Expr<'src>> {
                         lhs.code_gen(),
                         rhs.code_gen(),
                         match op {
-                            Operator::Eq => "sete",
+                            Operator::EqEq => "sete",
                             Operator::Ne => "setne",
                             Operator::Ge => "setge",
                             Operator::Gt => "setg",
@@ -77,7 +76,6 @@ impl<'src> Codegen for Spanned<Expr<'src>> {
                         }
                     )
                 }
-
                 Operator::LogicalAnd => {
                     let l1 = label(&mut i);
                     let l2 = label(&mut i);
@@ -90,7 +88,6 @@ impl<'src> Codegen for Spanned<Expr<'src>> {
                         l2,
                     )
                 }
-
                 Operator::LogicalOr => {
                     let l1 = label(&mut i);
                     let l2 = label(&mut i);
@@ -103,9 +100,13 @@ impl<'src> Codegen for Spanned<Expr<'src>> {
                         l2
                     )
                 }
-                _ => unreachable!("reached default branch of binary expr codegen"),
+                Operator::LogicalNot => unreachable!("reached logical not in binary expr codegen"),
+                Operator::BitwiseNot => unreachable!("reached bitwise not in binary expr codegen"),
+                Operator::Eq => todo!("assignment operator"),
             },
+
             Expr::Variable(_) => todo!("variable expression"),
+
             Expr::Error => unreachable!("reached error branch of expr codegen"),
         }
     }

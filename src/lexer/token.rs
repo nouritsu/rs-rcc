@@ -33,9 +33,6 @@ pub enum Token<'src> {
     GreaterEqual,
     LesserEqual,
     Equals,
-
-    /* Ignored */
-    Comment,
 }
 
 impl<'src> Display for Token<'src> {
@@ -65,7 +62,6 @@ impl<'src> Display for Token<'src> {
             Token::GreaterEqual => write!(f, ">="),
             Token::LesserEqual => write!(f, "<="),
             Token::Equals => write!(f, "="),
-            Token::Comment => unimplemented!("comments should not be displayed"),
         }
     }
 }

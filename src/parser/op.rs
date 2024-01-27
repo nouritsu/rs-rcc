@@ -6,7 +6,7 @@ pub enum Operator {
     Minus,
     Multiply,
     Divide,
-    Eq,
+    EqEq,
     Ne,
     Gt,
     Lt,
@@ -16,6 +16,7 @@ pub enum Operator {
     LogicalAnd,
     LogicalOr,
     BitwiseNot,
+    Eq,
 }
 
 impl TryFrom<Token<'_>> for Operator {
@@ -27,7 +28,7 @@ impl TryFrom<Token<'_>> for Operator {
             Token::Star => Operator::Multiply,
             Token::Slash => Operator::Divide,
             Token::Minus => Operator::Minus,
-            Token::EqualsEquals => Operator::Eq,
+            Token::EqualsEquals => Operator::EqEq,
             Token::NotEquals => Operator::Ne,
             Token::GreaterThan => Operator::Gt,
             Token::LesserThan => Operator::Lt,
@@ -37,6 +38,7 @@ impl TryFrom<Token<'_>> for Operator {
             Token::AndAnd => Operator::LogicalAnd,
             Token::OrOr => Operator::LogicalOr,
             Token::Tilde => Operator::BitwiseNot,
+            Token::Equals => Operator::Eq,
             _ => return Err(()),
         })
     }
@@ -52,7 +54,7 @@ mod tests {
         assert_eq!(Token::Star.try_into(), Ok(Operator::Multiply));
         assert_eq!(Token::Slash.try_into(), Ok(Operator::Divide));
         assert_eq!(Token::Minus.try_into(), Ok(Operator::Minus));
-        assert_eq!(Token::EqualsEquals.try_into(), Ok(Operator::Eq));
+        assert_eq!(Token::EqualsEquals.try_into(), Ok(Operator::EqEq));
         assert_eq!(Token::NotEquals.try_into(), Ok(Operator::Ne));
         assert_eq!(Token::GreaterThan.try_into(), Ok(Operator::Gt));
         assert_eq!(Token::LesserThan.try_into(), Ok(Operator::Lt));

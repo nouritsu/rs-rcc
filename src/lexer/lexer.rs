@@ -58,23 +58,13 @@ pub fn lexer<'src>(
         })
         .boxed();
 
-    let comment = {
-        let sl = just("//")
-            .then(any().and_is(text::newline().not()).repeated())
-            .to(Token::Comment);
-        let ml = any()
-            .repeated()
-            .delimited_by(just("/*"), just("*/"))
-            .to(Token::Comment);
+    //TODO: comment lexer
 
-        sl.or(ml)
-    }
-    .boxed();
-
-    let token = choice((literal, symbol, ident, comment));
+    let token = choice((literal, symbol, ident));
 
     token
         .map_with(|tok, e| (tok, e.span()))
+        // .padded_by(comment.repeated())
         .padded()
         .recover_with(skip_then_retry_until(any().ignored(), end()))
         .repeated()
