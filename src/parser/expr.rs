@@ -1,18 +1,21 @@
 use super::Operator;
-use crate::{codegen::Codegen, parser::helper::label};
+use crate::{codegen::Codegen, lexer::Span, parser::helper::label};
 
-#[derive(Debug)]
-pub enum Expr {
+pub type Spanned<T> = (T, Span);
+
+#[derive(Debug, Clone)]
+pub enum Expr<'src> {
     LiteralInteger(u64),
-    Variable(String),
-    Unary(Operator, Box<Self>),
-    Binary(Box<Self>, Operator, Box<Self>),
+    Variable(&'src str),
+    Unary(Operator, Box<Spanned<Self>>),
+    Binary(Box<Spanned<Self>>, Operator, Box<Spanned<Self>>),
+    Error,
 }
 
-impl Codegen for Expr {
+impl<'src> Codegen for Spanned<Expr<'src>> {
     fn code_gen(&self) -> String {
         let mut i = 0usize;
-        match self {
+        match &self.0 {
             Expr::LiteralInteger(i) => format!("mov ${}, %rax\n", i),
             Expr::Unary(op, rhs) => {
                 rhs.code_gen()
@@ -100,20 +103,10 @@ impl Codegen for Expr {
                         l2
                     )
                 }
-                _ => unreachable!("reached default branch of binary expression codegen"),
+                _ => unreachable!("reached default branch of binary expr codegen"),
             },
             Expr::Variable(_) => todo!("variable expression"),
-        }
-    }
-}
-
-impl Expr {
-    pub fn is_const(&self) -> bool {
-        match self {
-            Expr::LiteralInteger(_) => true,
-            Expr::Variable(_) => false,
-            Expr::Unary(_, rhs) => rhs.is_const(),
-            Expr::Binary(lhs, _, rhs) => lhs.is_const() && rhs.is_const(),
+            Expr::Error => unreachable!("reached error branch of expr codegen"),
         }
     }
 }

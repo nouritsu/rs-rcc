@@ -1,6 +1,6 @@
 use crate::Token;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Operator {
     Plus,
     Minus,

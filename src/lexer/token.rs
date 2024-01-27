@@ -1,81 +1,71 @@
-use super::helper::*;
-use logos::Logos;
+use std::fmt::Display;
 
-#[derive(Logos, Debug, Clone, Copy, PartialEq, Eq)]
-#[logos(skip r"[ \t\f\r\n]+")] // Spaces
-#[logos(skip r"//[^\r\n]*(\r\n|\n)?")] // Single Line Comments
-#[logos(skip r"/\*([^*]|\*[^/])+\*/")] // Multi Line Comments
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Token<'src> {
     /* Keywords */
-    #[token("int")]
-    KwInt,
-
-    #[token("return")]
-    KwReturn,
+    Int,
+    Return,
 
     /* Literals */
-    #[regex(r"[0-9]+|0x[0-9a-fA-F]+|0b[01]+", |lex| lit_int(lex.slice()))]
     LitInteger(u64),
 
     /* Miscellaneous */
-    #[regex(r"[a-zA-Z_][0-9a-zA-Z_]*")]
     Identifier(&'src str),
 
     /* Symbols */
-    #[token("(")]
     OpenParen,
-
-    #[token(")")]
     CloseParen,
-
-    #[token("{")]
     OpenBrace,
-
-    #[token("}")]
     CloseBrace,
-
-    #[token(";")]
     Semicolon,
-
-    #[token("~")]
     Tilde,
-
-    #[token("-")]
-    Minus,
-
-    #[token("+")]
     Plus,
-
-    #[token("*")]
+    Minus,
     Star,
-
-    #[token("/")]
     Slash,
-
-    #[token("!")]
     Exclamation,
-
-    #[token("&&")]
     AndAnd,
-
-    #[token("||")]
     OrOr,
-
-    #[token("==")]
     EqualsEquals,
-
-    #[token("!=")]
     NotEquals,
-
-    #[token(">")]
     GreaterThan,
-
-    #[token("<")]
     LesserThan,
-
-    #[token(">=")]
     GreaterEqual,
-
-    #[token("<=")]
     LesserEqual,
+    Equals,
+
+    /* Ignored */
+    Comment,
+}
+
+impl<'src> Display for Token<'src> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Token::Int => write!(f, "int"),
+            Token::Return => write!(f, "return"),
+            Token::LitInteger(i) => write!(f, "{}", i),
+            Token::Identifier(s) => write!(f, "{}", s),
+            Token::OpenParen => write!(f, "("),
+            Token::CloseParen => write!(f, ")"),
+            Token::OpenBrace => write!(f, "{{"),
+            Token::CloseBrace => write!(f, "}}"),
+            Token::Semicolon => write!(f, ";"),
+            Token::Tilde => write!(f, "~"),
+            Token::Plus => write!(f, "+"),
+            Token::Minus => write!(f, "-"),
+            Token::Star => write!(f, "*"),
+            Token::Slash => write!(f, "/"),
+            Token::Exclamation => write!(f, "!"),
+            Token::AndAnd => write!(f, "&&"),
+            Token::OrOr => write!(f, "||"),
+            Token::EqualsEquals => write!(f, "=="),
+            Token::NotEquals => write!(f, "!="),
+            Token::GreaterThan => write!(f, ">"),
+            Token::LesserThan => write!(f, "<"),
+            Token::GreaterEqual => write!(f, ">="),
+            Token::LesserEqual => write!(f, "<="),
+            Token::Equals => write!(f, "="),
+            Token::Comment => unimplemented!("comments should not be displayed"),
+        }
+    }
 }

@@ -1,10 +1,7 @@
-use chumsky::{
-    input::{Input, Stream},
-    Parser,
-};
+use ariadne::{sources, Color, Label, Report, ReportKind};
+use chumsky::{input::Input, Parser};
 use clap::Parser as CLParser;
-use logos::Logos;
-use rs_rcc::{codegen::Codegen, parser::parser, Token};
+use rs_rcc::{codegen::Codegen, lexer::lexer, parser::parser};
 use std::{fs, path::PathBuf};
 
 #[derive(CLParser)]
@@ -15,40 +12,65 @@ struct Args {
 
     #[arg(short, long)]
     output: PathBuf,
+
+    #[arg(long, default_value_t = false)]
+    print_ast: bool,
 }
 
 fn main() {
     let args = Args::parse();
 
-    match fs::read_to_string(&args.file) {
-        Ok(src) => {
-            // Lexer
-            let tokens = Token::lexer(&src);
+    let src = fs::read_to_string(&args.file).expect("unable to read input file");
 
-            let token_iter = tokens.spanned().map(|(tok, span)| match tok {
-                Ok(tok) => (tok, span.into()),
-                Err(_) => panic!("lexer Error"),
-            });
+    let (tokens, lex_errs) = lexer().parse(&src).into_output_errors();
 
-            let token_stream = Stream::from_iter(token_iter).spanned((src.len()..src.len()).into());
+    let parse_errs = match &tokens {
+        Some(tokens) => {
+            let (ast, parse_errs) = parser()
+                .map_with(|ast, e| (ast, e.span()))
+                .parse(tokens.as_slice().spanned((src.len()..src.len()).into()))
+                .into_output_errors();
 
-            // Parser
-            match parser().parse(token_stream).into_result() {
-                Ok(ast) => fs::write(
+            if let Some((stmts, _)) = ast {
+                fs::write(
                     args.output,
-                    ast.into_iter()
+                    stmts
+                        .iter()
                         .map(|stmt| stmt.code_gen())
                         .fold(String::new(), |s, x| s + &x),
                 )
-                .expect("failed to write to output file"),
-                Err(err) => {
-                    err.into_iter().for_each(|err| println!("{:?}", err));
-                }
-            }
-        }
+                .expect("failed to write to output file");
+            };
 
-        Err(err) => {
-            panic!("{}", err);
+            parse_errs
         }
-    }
+        None => Vec::new(),
+    };
+
+    let file_name = args.file.to_string_lossy().to_string();
+    lex_errs
+        .into_iter()
+        .map(|e| e.map_token(|t| t.to_string()))
+        .chain(
+            parse_errs
+                .into_iter()
+                .map(|e| e.map_token(|t| t.to_string())),
+        )
+        .for_each(|e| {
+            Report::build(ReportKind::Error, file_name.clone(), e.span().start)
+                .with_message(e.to_string())
+                .with_label(
+                    Label::new((file_name.clone(), e.span().into_range()))
+                        .with_message(e.reason().to_string())
+                        .with_color(Color::Red),
+                )
+                .with_labels(e.contexts().map(|(label, span)| {
+                    Label::new((file_name.clone(), span.into_range()))
+                        .with_message(format!("while parsing this {}", label))
+                        .with_color(Color::Yellow)
+                }))
+                .finish()
+                .print(sources([(file_name.clone(), src.clone())]))
+                .expect("unable to print errors")
+        });
 }
