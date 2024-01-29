@@ -1,4 +1,4 @@
-use crate::Token;
+use super::Token;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Operator {

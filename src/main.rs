@@ -2,11 +2,7 @@ use ariadne::{sources, Color, Label, Report, ReportKind};
 use chumsky::{input::Input, Parser};
 use clap::Parser as CLParser;
 use color_eyre::eyre;
-use rcc::{
-    codegen::{Codegen, IntoLabels},
-    lexer::lexer,
-    parser::parser,
-};
+use rcc::{common::codegen::IntoLabels, common::Codegen, lexer::lexer, parser::parser};
 use std::{collections::HashMap, fs, path::PathBuf};
 
 #[derive(CLParser)]
@@ -15,9 +11,11 @@ struct Args {
     /// Source File
     file: PathBuf,
 
+    /// Output File
     #[arg(short, long)]
     output: PathBuf,
 
+    /// Pretty print parsed AST
     #[arg(long, default_value_t = false)]
     print_ast: bool,
 }

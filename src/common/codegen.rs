@@ -1,4 +1,4 @@
-use crate::{lexer::Span, parser::expr::Spanned};
+use super::{Span, Spanned};
 use ariadne::{Color, Label};
 use color_eyre::owo_colors::OwoColorize;
 use std::{collections::HashMap, ops::Range};

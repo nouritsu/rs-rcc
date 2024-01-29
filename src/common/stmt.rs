@@ -1,10 +1,7 @@
 use clap::error::Result;
 
 use super::{expr::Spanned, Expr};
-use crate::{
-    codegen::{Codegen, CodegenError},
-    lexer::Span,
-};
+use super::{Codegen, CodegenError, Span};
 use std::collections::HashMap;
 
 #[derive(Debug)]

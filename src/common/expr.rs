@@ -1,9 +1,4 @@
-use super::Operator;
-use crate::{
-    codegen::{Codegen, CodegenError},
-    lexer::Span,
-    parser::helper::label,
-};
+use super::{helper::label, Codegen, CodegenError, Operator, Span};
 use std::collections::HashMap;
 
 pub type Spanned<T> = (T, Span);

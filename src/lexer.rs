@@ -1,7 +1,5 @@
-use crate::Token;
+use crate::common::{Span, Token};
 use chumsky::{prelude::*, text::digits};
-
-pub type Span = SimpleSpan<usize>;
 
 pub fn lexer<'src>(
 ) -> impl Parser<'src, &'src str, Vec<(Token<'src>, Span)>, extra::Err<Rich<'src, char, Span>>> {

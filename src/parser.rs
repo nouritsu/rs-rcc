@@ -1,5 +1,4 @@
-use super::{expr::Spanned, Expr, Stmt};
-use crate::{common::Token, lexer::Span};
+use crate::common::{Expr, Span, Spanned, Stmt, Token};
 use chumsky::prelude::*;
 
 type ParserInput<'tokens, 'src> =
