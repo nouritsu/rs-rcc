@@ -31,10 +31,10 @@ fn stmt<'tokens, 'src: 'tokens>() -> impl Parser<
         .boxed();
 
     let stmt_declare = just(Token::Int)
-        .then(ident)
+        .then(ident.map_with(|ident, e| (ident, e.span())))
         .then(just(Token::Equals).ignore_then(expr()).or_not())
         .then_ignore(just(Token::Semicolon))
-        .map_with(|((_ty, var), expr), e| (Stmt::Declare(var, expr), e.span()))
+        .map_with(|((_ty, ident), expr), e| (Stmt::Declare(ident, expr), e.span()))
         .boxed();
 
     let stmt_expr = expr()
@@ -59,6 +59,7 @@ fn stmt<'tokens, 'src: 'tokens>() -> impl Parser<
     stmt_fun
 }
 
+/* Expressions */
 fn expr<'tokens, 'src: 'tokens>() -> impl Parser<
     'tokens,
     ParserInput<'tokens, 'src>,
