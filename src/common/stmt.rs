@@ -53,8 +53,8 @@ impl<'src> Codegen<'src> for Spanned<Stmt<'src>> {
                         .unwrap_or("mov $0, %rax\n".to_string())
                 );
 
-                env.insert(name.to_string(), (*sp, name_span));
                 *sp -= 8;
+                env.insert(name.to_string(), (*sp, name_span));
 
                 asm
             }

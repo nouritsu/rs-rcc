@@ -1,4 +1,5 @@
 pub mod codegen;
+pub mod env;
 pub mod expr;
 pub mod helper;
 pub mod op;
