@@ -35,14 +35,6 @@ impl<'src> Environment<'src> {
         self.envs.iter().rev().find_map(|env| env.get(key).copied())
     }
 
-    pub fn new_scope(&mut self) {
-        self.envs.push(HashMap::new())
-    }
-
-    pub fn end_scope(&mut self) -> bool {
-        self.envs.len() != 1 && self.envs.pop().is_some()
-    }
-
     pub fn contains(&self, key: &str) -> bool {
         self.envs
             .iter()
@@ -50,6 +42,14 @@ impl<'src> Environment<'src> {
             .map(|env| env.get(key))
             .flatten()
             .is_some()
+    }
+
+    pub fn new_scope(&mut self) {
+        self.envs.push(HashMap::new())
+    }
+
+    pub fn end_scope(&mut self) -> bool {
+        self.envs.len() != 1 && self.envs.pop().is_some()
     }
 
     fn decrement_sp(&mut self) {
