@@ -1,4 +1,4 @@
-use super::{env::Environment, Span, Spanned};
+use super::{env::Environment, helper::LabelTracker, Span, Spanned};
 use ariadne::{Color, Label};
 use color_eyre::owo_colors::OwoColorize;
 use std::ops::Range;
@@ -59,7 +59,7 @@ impl<'src> IntoLabels for Spanned<CodegenError<'src>> {
 pub trait Codegen<'src> {
     fn code_gen(
         self,
-        label_index: &mut usize,
+        lt: &mut LabelTracker,
         env: &mut Environment<'src>,
     ) -> Result<String, Spanned<CodegenError<'src>>>;
 }

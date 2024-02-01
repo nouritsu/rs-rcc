@@ -4,7 +4,7 @@ use clap::Parser as CLParser;
 use color_eyre::eyre;
 use rcc::{
     common::codegen::IntoLabels,
-    common::{env::Environment, Codegen},
+    common::{env::Environment, helper::LabelTracker, Codegen},
     lexer::lexer,
     parser::parser,
 };
@@ -47,7 +47,7 @@ fn main() -> eyre::Result<()> {
                     println!("{:#?}", stmts);
                 }
 
-                match stmts.code_gen(&mut 0, &mut Environment::new()) {
+                match stmts.code_gen(&mut LabelTracker::new(), &mut Environment::new()) {
                     Ok(asm) => fs::write(args.output, asm)?,
                     Err((err, span)) => {
                         Report::build(ReportKind::Error, file_name.clone(), span.start)

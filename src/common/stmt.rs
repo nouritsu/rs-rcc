@@ -1,4 +1,4 @@
-use super::{env::Environment, Codegen, CodegenError};
+use super::{env::Environment, helper::LabelTracker, Codegen, CodegenError};
 use super::{Expr, Spanned};
 use clap::error::Result;
 
@@ -13,12 +13,12 @@ pub enum Stmt<'src> {
 impl<'src> Codegen<'src> for Vec<Spanned<Stmt<'src>>> {
     fn code_gen(
         self,
-        i: &mut usize,
+        lt: &mut LabelTracker,
         env: &mut Environment<'src>,
     ) -> Result<String, Spanned<CodegenError<'src>>> {
         Ok(self
             .into_iter()
-            .map(|stmt| stmt.code_gen(i, env))
+            .map(|stmt| stmt.code_gen(lt, env))
             .collect::<Result<Vec<_>, _>>()?
             .into_iter()
             .fold(String::new(), |s, x| s + &x))
@@ -28,11 +28,13 @@ impl<'src> Codegen<'src> for Vec<Spanned<Stmt<'src>>> {
 impl<'src> Codegen<'src> for Spanned<Stmt<'src>> {
     fn code_gen(
         self,
-        i: &mut usize,
+        lt: &mut LabelTracker,
         env: &mut Environment<'src>,
     ) -> Result<String, Spanned<CodegenError<'src>>> {
         Ok(match self {
-            (Stmt::Return(expr), _) => expr.code_gen(i, env)? + "mov %rbp, %rsp\npop %rbp\nret\n",
+            (Stmt::Return(expr), _) => {
+                expr.code_gen(lt, env)? + "\tmov %rbp, %rsp\n\tpop %rbp\n\tret\n"
+            }
 
             (Stmt::Declare((name, name_span), expr), span) => {
                 if env.contains(name) {
@@ -41,10 +43,10 @@ impl<'src> Codegen<'src> for Spanned<Stmt<'src>> {
                 }
 
                 let asm = format!(
-                    "{}push %rax\n",
-                    expr.map(|e| e.code_gen(i, env))
+                    "{}\tpush %rax\n",
+                    expr.map(|e| e.code_gen(lt, env))
                         .transpose()?
-                        .unwrap_or("mov $0, %rax\n".to_string())
+                        .unwrap_or("\tmov $0, %rax\n".to_string())
                 );
 
                 env.put(name, name_span);
@@ -52,15 +54,15 @@ impl<'src> Codegen<'src> for Spanned<Stmt<'src>> {
                 asm
             }
 
-            (Stmt::Expression(expr), _) => expr.code_gen(i, env)?,
+            (Stmt::Expression(expr), _) => expr.code_gen(lt, env)?,
 
             (Stmt::Function(name, body), _) => {
                 format!(
-                    ".globl {}\n{}:\npush %rbp\nmov %rsp, %rbp\n{}",
+                    "\t.globl {}\n{}:\n\tpush %rbp\n\tmov %rsp, %rbp\n{}",
                     name,
                     name,
                     body.into_iter()
-                        .map(|stmt| stmt.code_gen(i, env))
+                        .map(|stmt| stmt.code_gen(lt, env))
                         .collect::<Result<Vec<_>, _>>()?
                         .into_iter()
                         .fold(String::new(), |s, x| s + &x)
