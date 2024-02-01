@@ -25,6 +25,7 @@ pub fn lexer<'src>(
         just("}").to(Token::CloseBrace),
         // Controls
         just(";").to(Token::Semicolon),
+        /* Operators */
         // Assignment Operators
         just("=").to(Token::Equals),
         just("+=").to(Token::PlusEquals),
@@ -61,6 +62,9 @@ pub fn lexer<'src>(
         just("^").to(Token::Caret),
         just("<<").to(Token::LeftShift),
         just(">>").to(Token::RightShift),
+        // Conditional Operators
+        just("?").to(Token::Question),
+        just(":").to(Token::Colon),
     ])
     .boxed();
 
@@ -68,6 +72,8 @@ pub fn lexer<'src>(
         .map(|ident| match ident {
             "int" => Token::Int,
             "return" => Token::Return,
+            "if" => Token::If,
+            "else" => Token::Else,
             s => Token::Identifier(s),
         })
         .boxed();
@@ -86,7 +92,8 @@ pub fn lexer<'src>(
             .ignored();
 
         ml.or(sl)
-    };
+    }
+    .boxed();
 
     let token = choice((literal, symbol, ident));
 
