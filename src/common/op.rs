@@ -1,7 +1,26 @@
 use super::Token;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum Operator {
+pub enum UnaryOperator {
+    Minus,
+    LogicalNot,
+    BitwiseNot,
+}
+
+impl TryFrom<Token<'_>> for UnaryOperator {
+    type Error = ();
+
+    fn try_from(value: Token<'_>) -> Result<Self, Self::Error> {
+        Ok(match value {
+            Token::Minus => Self::Minus,
+            Token::Exclamation => Self::LogicalNot,
+            Token::Tilde => Self::BitwiseNot,
+            _ => return Err(()),
+        })
+    }
+}
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum BinaryOperator {
     // Math
     Plus,
     Minus,
@@ -18,12 +37,10 @@ pub enum Operator {
     Le,
 
     // Logical
-    LogicalNot,
     LogicalAnd,
     LogicalOr,
 
     // Bitwise
-    BitwiseNot,
     BitwiseAnd,
     BitwiseOr,
     BitwiseXor,
@@ -44,7 +61,7 @@ pub enum Operator {
     RightShiftEquals,
 }
 
-impl TryFrom<Token<'_>> for Operator {
+impl TryFrom<Token<'_>> for BinaryOperator {
     type Error = ();
 
     fn try_from(value: Token) -> Result<Self, Self::Error> {
@@ -60,12 +77,10 @@ impl TryFrom<Token<'_>> for Operator {
             Token::LesserThan => Self::Lt,
             Token::GreaterEquals => Self::Ge,
             Token::LesserEquals => Self::Le,
-            Token::Exclamation => Self::LogicalNot,
             Token::AndAnd => Self::LogicalAnd,
             Token::PipePipe => Self::LogicalOr,
-            Token::Tilde => Self::BitwiseNot,
             Token::And => Self::BitwiseAnd,
-            Token::Or => Self::BitwiseOr,
+            Token::Pipe => Self::BitwiseOr,
             Token::LeftShift => Self::LeftShift,
             Token::RightShift => Self::RightShift,
             Token::Equals => Self::Eq,
@@ -84,7 +99,7 @@ impl TryFrom<Token<'_>> for Operator {
     }
 }
 
-impl Operator {
+impl BinaryOperator {
     pub fn is_compound_assignment(&self) -> bool {
         matches!(
             self,

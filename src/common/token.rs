@@ -44,7 +44,7 @@ pub enum Token<'src> {
     // Bitwise Operators
     Tilde,
     And,
-    Or,
+    Pipe,
     Caret,
     LeftShift,
     RightShift,
@@ -98,7 +98,7 @@ impl<'src> Display for Token<'src> {
             Self::LesserEquals => write!(f, "<="),
             Self::Equals => write!(f, "="),
             Self::And => write!(f, "&"),
-            Self::Or => write!(f, "|"),
+            Self::Pipe => write!(f, "|"),
             Self::Caret => write!(f, "^"),
             Self::PlusEquals => write!(f, "+="),
             Self::MinusEquals => write!(f, "-="),

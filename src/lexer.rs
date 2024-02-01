@@ -44,13 +44,6 @@ pub fn lexer<'src>(
         just("*").to(Token::Star),
         just("/").to(Token::Slash),
         just("%").to(Token::Percent),
-        // Comparison Operators
-        just("==").to(Token::EqualsEquals),
-        just("!=").to(Token::NotEquals),
-        just(">=").to(Token::GreaterEquals),
-        just("<=").to(Token::LesserEquals),
-        just(">").to(Token::GreaterThan),
-        just("<").to(Token::LesserThan),
         // Logical Operators
         just("!").to(Token::Exclamation),
         just("&&").to(Token::AndAnd),
@@ -58,10 +51,17 @@ pub fn lexer<'src>(
         // Bitwise Operators
         just("~").to(Token::Tilde),
         just("&").to(Token::And),
-        just("|").to(Token::Or),
+        just("|").to(Token::Pipe),
         just("^").to(Token::Caret),
         just("<<").to(Token::LeftShift),
         just(">>").to(Token::RightShift),
+        // Comparison Operators
+        just("==").to(Token::EqualsEquals),
+        just("!=").to(Token::NotEquals),
+        just(">=").to(Token::GreaterEquals),
+        just("<=").to(Token::LesserEquals),
+        just(">").to(Token::GreaterThan),
+        just("<").to(Token::LesserThan),
         // Conditional Operators
         just("?").to(Token::Question),
         just(":").to(Token::Colon),

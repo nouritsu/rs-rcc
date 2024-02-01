@@ -11,8 +11,9 @@ pub mod token;
 // Re-Exports
 pub use codegen::{Codegen, CodegenError};
 pub use desugar::Desugar;
+pub use env::Environment;
 pub use expr::Expr;
-pub use op::Operator;
+pub use op::{BinaryOperator, UnaryOperator};
 pub use span_ty::{Span, Spanned};
 pub use stmt::Stmt;
 pub use token::Token;

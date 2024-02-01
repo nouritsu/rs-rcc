@@ -1,15 +1,16 @@
 use crate::common::helper::LabelKind;
 
 use super::{
-    env::Environment, helper::LabelTracker, Codegen, CodegenError, Desugar, Operator, Spanned,
+    helper::LabelTracker, BinaryOperator, Codegen, CodegenError, Desugar, Environment, Spanned,
+    UnaryOperator,
 };
 
 #[derive(Debug, Clone)]
 pub enum Expr<'src> {
     LiteralInteger(u64),
     Variable(&'src str),
-    Unary(Operator, Box<Spanned<Self>>),
-    Binary(Box<Spanned<Self>>, Operator, Box<Spanned<Self>>),
+    Unary(UnaryOperator, Box<Spanned<Self>>),
+    Binary(Box<Spanned<Self>>, BinaryOperator, Box<Spanned<Self>>),
 }
 
 impl<'src> Codegen<'src> for Vec<Spanned<Expr<'src>>> {
@@ -45,85 +46,85 @@ impl<'src> Codegen<'src> for Spanned<Expr<'src>> {
             }
 
             /* Unary */
-            (Expr::Unary(Operator::Minus, rhs), _) => rhs.code_gen(lt, env)? + "\tneg %rax\n",
+            (Expr::Unary(UnaryOperator::Minus, rhs), _) => rhs.code_gen(lt, env)? + "\tneg %rax\n",
 
-            (Expr::Unary(Operator::LogicalNot, rhs), _) => {
+            (Expr::Unary(UnaryOperator::LogicalNot, rhs), _) => {
                 rhs.code_gen(lt, env)? + "\tcmpl $0, %rax\n\tmov $0, %rax\n\tsete %al\n"
             }
 
-            (Expr::Unary(Operator::BitwiseNot, rhs), _) => rhs.code_gen(lt, env)? + "\tnot %rax\n",
-
-            (Expr::Unary(_, _), _) => unreachable!("reached unary _ branch in codegen"),
+            (Expr::Unary(UnaryOperator::BitwiseNot, rhs), _) => {
+                rhs.code_gen(lt, env)? + "\tnot %rax\n"
+            }
 
             /* Binary */
             // Math Os
-            (Expr::Binary(lhs, Operator::Plus, rhs), _) => format!(
+            (Expr::Binary(lhs, BinaryOperator::Plus, rhs), _) => format!(
                 "{}\tpush %rax\n{}\tpop %rcx\n\tadd %rcx, %rax\n",
                 lhs.code_gen(lt, env)?,
                 rhs.code_gen(lt, env)?,
             ),
 
-            (Expr::Binary(lhs, Operator::Multiply, rhs), _) => format!(
+            (Expr::Binary(lhs, BinaryOperator::Multiply, rhs), _) => format!(
                 "{}\tpush %rax\n{}\tpop %rcx\n\timul %rcx, %rax\n",
                 lhs.code_gen(lt, env)?,
                 rhs.code_gen(lt, env)?,
             ),
 
-            (Expr::Binary(lhs, Operator::Minus, rhs), _) => format!(
+            (Expr::Binary(lhs, BinaryOperator::Minus, rhs), _) => format!(
                 "{}\tpush %rax\n{}\tpop %rcx\n\tsub %rcx, %rax\n",
                 rhs.code_gen(lt, env)?,
                 lhs.code_gen(lt, env)?,
             ),
 
-            (Expr::Binary(lhs, Operator::Divide, rhs), _) => format!(
+            (Expr::Binary(lhs, BinaryOperator::Divide, rhs), _) => format!(
                 "{}\tpush %rax\n{}\tpop %rcx\n\tcqo\n\tidiv %rcx\n",
                 rhs.code_gen(lt, env)?,
                 lhs.code_gen(lt, env)?,
             ),
 
-            (Expr::Binary(lhs, Operator::Mod, rhs), _) => format!(
+            (Expr::Binary(lhs, BinaryOperator::Mod, rhs), _) => format!(
                 "{}\tpush %rax\n{}\tpop %rcx\n\tcqo\n\tidiv %rcx\n\tmov %rdx, %rax\n",
                 rhs.code_gen(lt, env)?,
                 lhs.code_gen(lt, env)?,
             ),
 
-            (Expr::Binary(lhs, Operator::EqEq, rhs), _) => format!(
+            (Expr::Binary(lhs, BinaryOperator::EqEq, rhs), _) => format!(
                 "{}\tpush %rax\n{}\tpop %rcx\n\tcmp %rax, %rcx\n\tmov $0, %rax\n\tsete %al\n",
                 lhs.code_gen(lt, env)?,
                 rhs.code_gen(lt, env)?,
             ),
 
-            (Expr::Binary(lhs, Operator::Ne, rhs), _) => format!(
+            (Expr::Binary(lhs, BinaryOperator::Ne, rhs), _) => format!(
                 "{}\tpush %rax\n{}\tpop %rcx\n\tcmp %rax, %rcx\n\tmov $0, %rax\n\tsetne %al\n",
                 lhs.code_gen(lt, env)?,
                 rhs.code_gen(lt, env)?,
             ),
 
-            (Expr::Binary(lhs, Operator::Ge, rhs), _) => format!(
+            (Expr::Binary(lhs, BinaryOperator::Ge, rhs), _) => format!(
                 "{}\tpush %rax\n{}\tpop %rcx\n\tcmp %rax, %rcx\n\tmov $0, %rax\n\tsetge %al\n",
                 lhs.code_gen(lt, env)?,
                 rhs.code_gen(lt, env)?,
             ),
 
-            (Expr::Binary(lhs, Operator::Gt, rhs), _) => format!(
+            (Expr::Binary(lhs, BinaryOperator::Gt, rhs), _) => format!(
                 "{}push %rax\n{}\tpop %rcx\n\tcmp %rax, %rcx\n\tmov $0, %rax\n\tsetg %al\n",
                 lhs.code_gen(lt, env)?,
                 rhs.code_gen(lt, env)?,
             ),
 
-            (Expr::Binary(lhs, Operator::Le, rhs), _) => format!(
+            (Expr::Binary(lhs, BinaryOperator::Le, rhs), _) => format!(
                 "{}\tpush %rax\n{}\tpop %rcx\n\tcmp %rax, %rcx\n\tmov $0, %rax\n\tsetle %al\n",
                 lhs.code_gen(lt, env)?,
                 rhs.code_gen(lt, env)?,
             ),
 
-            (Expr::Binary(lhs, Operator::Lt, rhs), _) => format!(
+            (Expr::Binary(lhs, BinaryOperator::Lt, rhs), _) => format!(
                 "{}\tpush %rax\n{}\tpop %rcx\n\tcmp %rax, %rcx\n\tmov $0, %rax\n\tsetl %al\n",
                 lhs.code_gen(lt, env)?,
                 rhs.code_gen(lt, env)?,
             ),
 
-            (Expr::Binary(lhs, Operator::LogicalAnd, rhs), _) => {
+            (Expr::Binary(lhs, BinaryOperator::LogicalAnd, rhs), _) => {
                 let l1 = lt.create(LabelKind::And);
                 let l2 = lt.create(LabelKind::AndShortCircuit);
 
@@ -136,7 +137,7 @@ impl<'src> Codegen<'src> for Spanned<Expr<'src>> {
                     )
             }
 
-            (Expr::Binary(lhs, Operator::LogicalOr, rhs), _) => {
+            (Expr::Binary(lhs, BinaryOperator::LogicalOr, rhs), _) => {
                 let l1 = lt.create(LabelKind::Or);
                 let l2 = lt.create(LabelKind::OrShortCircuit);
 
@@ -149,21 +150,37 @@ impl<'src> Codegen<'src> for Spanned<Expr<'src>> {
                     )
             }
 
-            (Expr::Binary(lhs, Operator::BitwiseAnd, rhs), _) => format!(
+            (Expr::Binary(lhs, BinaryOperator::BitwiseAnd, rhs), _) => format!(
                 "{}\tpush %rax\n{}\tpop %rcx\n\tand %rcx, %rax\n",
                 lhs.code_gen(lt, env)?,
                 rhs.code_gen(lt, env)?,
             ),
 
-            (Expr::Binary(_lhs, Operator::BitwiseOr, _rhs), _) => todo!(),
+            (Expr::Binary(lhs, BinaryOperator::BitwiseOr, rhs), _) => format!(
+                "{}\tpush %rax\n{}\tpop %rcx\n\tor %rcx, %rax\n",
+                lhs.code_gen(lt, env)?,
+                rhs.code_gen(lt, env)?,
+            ),
 
-            (Expr::Binary(_lhs, Operator::BitwiseXor, _rhs), _) => todo!(),
+            (Expr::Binary(lhs, BinaryOperator::BitwiseXor, rhs), _) => format!(
+                "{}\tpush %rax\n{}\tpop %rcx\n\txor %rcx, %rax\n",
+                lhs.code_gen(lt, env)?,
+                rhs.code_gen(lt, env)?,
+            ),
 
-            (Expr::Binary(_lhs, Operator::LeftShift, _rhs), _) => todo!(),
+            (Expr::Binary(lhs, BinaryOperator::LeftShift, rhs), _) => format!(
+                "{}\tpush %rax\n{}\tpop %rcx\n\tshl %rcx, %rax\n",
+                rhs.code_gen(lt, env)?,
+                lhs.code_gen(lt, env)?,
+            ),
 
-            (Expr::Binary(_lhs, Operator::RightShift, _rhs), _) => todo!(),
+            (Expr::Binary(lhs, BinaryOperator::RightShift, rhs), _) => format!(
+                "{}\tpush %rax\n{}\tpop %rcx\n\tshr %rcx, %rax\n",
+                rhs.code_gen(lt, env)?,
+                lhs.code_gen(lt, env)?,
+            ),
 
-            (Expr::Binary(lhs, Operator::Eq, rhs), _) => {
+            (Expr::Binary(lhs, BinaryOperator::Eq, rhs), _) => {
                 let var = lhs
                     .0
                     .as_lvalue()
@@ -199,7 +216,7 @@ impl<'src> Desugar<Spanned<Expr<'src>>> for Spanned<Expr<'src>> {
                 vec![(
                     Expr::Binary(
                         lhs.clone(),
-                        Operator::Eq,
+                        BinaryOperator::Eq,
                         Box::new((Expr::Binary(lhs, op.compound_to_operator()?, rhs), span)),
                     ),
                     span,
