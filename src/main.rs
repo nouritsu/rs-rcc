@@ -2,8 +2,13 @@ use ariadne::{sources, Color, Label, Report, ReportKind};
 use chumsky::{input::Input, Parser};
 use clap::Parser as CLParser;
 use color_eyre::eyre;
-use rcc::{common::codegen::IntoLabels, common::Codegen, lexer::lexer, parser::parser};
-use std::{collections::HashMap, fs, path::PathBuf};
+use rcc::{
+    common::codegen::IntoLabels,
+    common::{env::Environment, Codegen},
+    lexer::lexer,
+    parser::parser,
+};
+use std::{fs, path::PathBuf};
 
 #[derive(CLParser)]
 #[command(author, version, about)]
@@ -42,7 +47,7 @@ fn main() -> eyre::Result<()> {
                     println!("{:#?}", stmts);
                 }
 
-                match stmts.code_gen(&mut 0, &mut 0, &mut HashMap::new()) {
+                match stmts.code_gen(&mut 0, &mut Environment::new()) {
                     Ok(asm) => fs::write(args.output, asm)?,
                     Err((err, span)) => {
                         Report::build(ReportKind::Error, file_name.clone(), span.start)

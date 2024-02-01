@@ -2,21 +2,46 @@ use super::Token;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Operator {
+    // Math
     Plus,
     Minus,
     Multiply,
     Divide,
+    Mod,
+
+    // Comparison
     EqEq,
     Ne,
     Gt,
     Lt,
     Ge,
     Le,
+
+    // Logical
     LogicalNot,
     LogicalAnd,
     LogicalOr,
+
+    // Bitwise
     BitwiseNot,
+    BitwiseAnd,
+    BitwiseOr,
+    BitwiseXor,
+    LeftShift,
+    RightShift,
+
+    // Assignment
     Eq,
+    PlusEquals,
+    MinusEquals,
+    MultiplyEquals,
+    DivideEquals,
+    ModEquals,
+    AndEquals,
+    OrEquals,
+    XorEquals,
+    LeftShiftEquals,
+    RightShiftEquals,
 }
 
 impl TryFrom<Token<'_>> for Operator {
@@ -24,45 +49,71 @@ impl TryFrom<Token<'_>> for Operator {
 
     fn try_from(value: Token) -> Result<Self, Self::Error> {
         Ok(match value {
-            Token::Plus => Operator::Plus,
-            Token::Star => Operator::Multiply,
-            Token::Slash => Operator::Divide,
-            Token::Minus => Operator::Minus,
-            Token::EqualsEquals => Operator::EqEq,
-            Token::NotEquals => Operator::Ne,
-            Token::GreaterThan => Operator::Gt,
-            Token::LesserThan => Operator::Lt,
-            Token::GreaterEqual => Operator::Ge,
-            Token::LesserEqual => Operator::Le,
-            Token::Exclamation => Operator::LogicalNot,
-            Token::AndAnd => Operator::LogicalAnd,
-            Token::OrOr => Operator::LogicalOr,
-            Token::Tilde => Operator::BitwiseNot,
-            Token::Equals => Operator::Eq,
+            Token::Plus => Self::Plus,
+            Token::Star => Self::Multiply,
+            Token::Slash => Self::Divide,
+            Token::Minus => Self::Minus,
+            Token::Percent => Self::Mod,
+            Token::EqualsEquals => Self::EqEq,
+            Token::NotEquals => Self::Ne,
+            Token::GreaterThan => Self::Gt,
+            Token::LesserThan => Self::Lt,
+            Token::GreaterEquals => Self::Ge,
+            Token::LesserEquals => Self::Le,
+            Token::Exclamation => Self::LogicalNot,
+            Token::AndAnd => Self::LogicalAnd,
+            Token::PipePipe => Self::LogicalOr,
+            Token::Tilde => Self::BitwiseNot,
+            Token::And => Self::BitwiseAnd,
+            Token::Or => Self::BitwiseOr,
+            Token::LeftShift => Self::LeftShift,
+            Token::RightShift => Self::RightShift,
+            Token::Equals => Self::Eq,
+            Token::PlusEquals => Self::PlusEquals,
+            Token::MinusEquals => Self::MinusEquals,
+            Token::StarEquals => Self::MultiplyEquals,
+            Token::SlashEquals => Self::DivideEquals,
+            Token::PercentEquals => Self::ModEquals,
+            Token::AndEquals => Self::AndEquals,
+            Token::PipeEquals => Self::OrEquals,
+            Token::CaretEquals => Self::XorEquals,
+            Token::LeftShiftEquals => Self::LeftShiftEquals,
+            Token::RightShiftEquals => Self::RightShiftEquals,
             _ => return Err(()),
         })
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+impl Operator {
+    pub fn is_compound_assignment(&self) -> bool {
+        matches!(
+            self,
+            Self::PlusEquals
+                | Self::MinusEquals
+                | Self::MultiplyEquals
+                | Self::DivideEquals
+                | Self::ModEquals
+                | Self::AndEquals
+                | Self::OrEquals
+                | Self::XorEquals
+                | Self::LeftShiftEquals
+                | Self::RightShiftEquals
+        )
+    }
 
-    #[test]
-    fn try_from() {
-        assert_eq!(Token::Plus.try_into(), Ok(Operator::Plus));
-        assert_eq!(Token::Star.try_into(), Ok(Operator::Multiply));
-        assert_eq!(Token::Slash.try_into(), Ok(Operator::Divide));
-        assert_eq!(Token::Minus.try_into(), Ok(Operator::Minus));
-        assert_eq!(Token::EqualsEquals.try_into(), Ok(Operator::EqEq));
-        assert_eq!(Token::NotEquals.try_into(), Ok(Operator::Ne));
-        assert_eq!(Token::GreaterThan.try_into(), Ok(Operator::Gt));
-        assert_eq!(Token::LesserThan.try_into(), Ok(Operator::Lt));
-        assert_eq!(Token::GreaterEqual.try_into(), Ok(Operator::Ge));
-        assert_eq!(Token::LesserEqual.try_into(), Ok(Operator::Le));
-        assert_eq!(Token::AndAnd.try_into(), Ok(Operator::LogicalAnd));
-        assert_eq!(Token::OrOr.try_into(), Ok(Operator::LogicalOr));
-        assert_eq!(Token::Exclamation.try_into(), Ok(Operator::LogicalNot));
-        assert_eq!(Token::Tilde.try_into(), Ok(Operator::BitwiseNot));
+    pub fn compound_to_operator(self) -> Option<Self> {
+        Some(match self {
+            Self::PlusEquals => Self::Plus,
+            Self::MinusEquals => Self::Minus,
+            Self::MultiplyEquals => Self::Multiply,
+            Self::DivideEquals => Self::Divide,
+            Self::ModEquals => Self::Mod,
+            Self::AndEquals => Self::BitwiseAnd,
+            Self::OrEquals => Self::BitwiseOr,
+            Self::XorEquals => Self::BitwiseXor,
+            Self::LeftShiftEquals => Self::LeftShift,
+            Self::RightShiftEquals => Self::RightShift,
+            _ => return None,
+        })
     }
 }

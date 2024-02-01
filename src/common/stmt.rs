@@ -1,8 +1,6 @@
+use super::{env::Environment, Codegen, CodegenError};
+use super::{Expr, Spanned};
 use clap::error::Result;
-
-use super::{expr::Spanned, Expr};
-use super::{Codegen, CodegenError, Span};
-use std::collections::HashMap;
 
 #[derive(Debug)]
 pub enum Stmt<'src> {
@@ -16,12 +14,11 @@ impl<'src> Codegen<'src> for Vec<Spanned<Stmt<'src>>> {
     fn code_gen(
         self,
         i: &mut usize,
-        sp: &mut isize,
-        env: &mut HashMap<String, (isize, Span)>,
+        env: &mut Environment<'src>,
     ) -> Result<String, Spanned<CodegenError<'src>>> {
         Ok(self
             .into_iter()
-            .map(|stmt| stmt.code_gen(i, sp, env))
+            .map(|stmt| stmt.code_gen(i, env))
             .collect::<Result<Vec<_>, _>>()?
             .into_iter()
             .fold(String::new(), |s, x| s + &x))
@@ -32,40 +29,38 @@ impl<'src> Codegen<'src> for Spanned<Stmt<'src>> {
     fn code_gen(
         self,
         i: &mut usize,
-        sp: &mut isize,
-        env: &mut HashMap<String, (isize, Span)>,
+        env: &mut Environment<'src>,
     ) -> Result<String, Spanned<CodegenError<'src>>> {
-        Ok(match self.0 {
-            Stmt::Return(expr) => expr.code_gen(i, sp, env)? + "mov %rbp, %rsp\npop %rbp\nret\n",
-            Stmt::Declare((name, name_span), expr) => {
-                if env.contains_key(name) {
-                    let (_, initial_span) = env.get(name).expect("infallible");
-                    return Err((
-                        CodegenError::RedeclaredVariable(name, *initial_span),
-                        name_span,
-                    ));
+        Ok(match self {
+            (Stmt::Return(expr), _) => expr.code_gen(i, env)? + "mov %rbp, %rsp\npop %rbp\nret\n",
+
+            (Stmt::Declare((name, name_span), expr), span) => {
+                if env.contains(name) {
+                    let (_, init_span) = env.get(name).expect("infallible");
+                    return Err((CodegenError::RedeclaredVariable(name, init_span), span));
                 }
 
                 let asm = format!(
                     "{}push %rax\n",
-                    expr.map(|e| e.code_gen(i, sp, env))
+                    expr.map(|e| e.code_gen(i, env))
                         .transpose()?
                         .unwrap_or("mov $0, %rax\n".to_string())
                 );
 
-                *sp -= 8;
-                env.insert(name.to_string(), (*sp, name_span));
+                env.put(name, name_span);
 
                 asm
             }
-            Stmt::Expression(expr) => expr.code_gen(i, sp, env)?,
-            Stmt::Function(name, body) => {
+
+            (Stmt::Expression(expr), _) => expr.code_gen(i, env)?,
+
+            (Stmt::Function(name, body), _) => {
                 format!(
                     ".globl {}\n{}:\npush %rbp\nmov %rsp, %rbp\n{}",
                     name,
                     name,
                     body.into_iter()
-                        .map(|stmt| stmt.code_gen(i, sp, env))
+                        .map(|stmt| stmt.code_gen(i, env))
                         .collect::<Result<Vec<_>, _>>()?
                         .into_iter()
                         .fold(String::new(), |s, x| s + &x)

@@ -99,7 +99,7 @@ fn expr<'tokens, 'src: 'tokens>() -> impl Parser<
             let product = unary
                 .clone()
                 .foldl_with(
-                    choice((just(Token::Slash), just(Token::Star)))
+                    choice((just(Token::Slash), just(Token::Star), just(Token::Percent)))
                         .then(unary)
                         .repeated(),
                     |lhs, (op, rhs), e| {
@@ -138,8 +138,8 @@ fn expr<'tokens, 'src: 'tokens>() -> impl Parser<
                 .clone()
                 .foldl_with(
                     choice((
-                        just(Token::GreaterEqual),
-                        just(Token::LesserEqual),
+                        just(Token::GreaterEquals),
+                        just(Token::LesserEquals),
                         just(Token::GreaterThan),
                         just(Token::LesserThan),
                     ))
@@ -197,7 +197,7 @@ fn expr<'tokens, 'src: 'tokens>() -> impl Parser<
             let logical_or = logical_and
                 .clone()
                 .foldl_with(
-                    just(Token::OrOr).then(logical_and).repeated(),
+                    just(Token::PipePipe).then(logical_and).repeated(),
                     |lhs, (op, rhs), e| {
                         (
                             Expr::Binary(
@@ -212,7 +212,21 @@ fn expr<'tokens, 'src: 'tokens>() -> impl Parser<
                 .boxed();
 
             let assignment = logical_or.clone().foldl_with(
-                just(Token::Equals).then(logical_or).repeated(),
+                choice((
+                    just(Token::Equals),
+                    just(Token::PlusEquals),
+                    just(Token::MinusEquals),
+                    just(Token::StarEquals),
+                    just(Token::SlashEquals),
+                    just(Token::PercentEquals),
+                    just(Token::AndEquals),
+                    just(Token::PipeEquals),
+                    just(Token::CaretEquals),
+                    just(Token::LeftShiftEquals),
+                    just(Token::RightShiftEquals),
+                ))
+                .then(logical_or)
+                .repeated(),
                 |lhs, (op, rhs), e| {
                     (
                         Expr::Binary(

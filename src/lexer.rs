@@ -25,26 +25,42 @@ pub fn lexer<'src>(
         just("}").to(Token::CloseBrace),
         // Controls
         just(";").to(Token::Semicolon),
+        // Assignment Operators
+        just("=").to(Token::Equals),
+        just("+=").to(Token::PlusEquals),
+        just("-=").to(Token::MinusEquals),
+        just("*=").to(Token::StarEquals),
+        just("/=").to(Token::SlashEquals),
+        just("%=").to(Token::PercentEquals),
+        just("&=").to(Token::AndEquals),
+        just("|=").to(Token::PipeEquals),
+        just("^=").to(Token::CaretEquals),
+        just("<<=").to(Token::LeftShiftEquals),
+        just(">>=").to(Token::RightShiftEquals),
         // Math Operators
         just("+").to(Token::Plus),
         just("-").to(Token::Minus),
         just("*").to(Token::Star),
         just("/").to(Token::Slash),
+        just("%").to(Token::Percent),
         // Comparison Operators
         just("==").to(Token::EqualsEquals),
         just("!=").to(Token::NotEquals),
-        just(">=").to(Token::GreaterEqual),
-        just("<=").to(Token::LesserEqual),
+        just(">=").to(Token::GreaterEquals),
+        just("<=").to(Token::LesserEquals),
         just(">").to(Token::GreaterThan),
         just("<").to(Token::LesserThan),
         // Logical Operators
         just("!").to(Token::Exclamation),
         just("&&").to(Token::AndAnd),
-        just("||").to(Token::OrOr),
+        just("||").to(Token::PipePipe),
         // Bitwise Operators
         just("~").to(Token::Tilde),
-        // Misc Operators
-        just("=").to(Token::Equals),
+        just("&").to(Token::And),
+        just("|").to(Token::Or),
+        just("^").to(Token::Caret),
+        just("<<").to(Token::LeftShift),
+        just(">>").to(Token::RightShift),
     ])
     .boxed();
 

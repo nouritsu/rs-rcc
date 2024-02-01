@@ -1,7 +1,7 @@
-use super::{Span, Spanned};
+use super::{env::Environment, Span, Spanned};
 use ariadne::{Color, Label};
 use color_eyre::owo_colors::OwoColorize;
-use std::{collections::HashMap, ops::Range};
+use std::ops::Range;
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone)]
@@ -22,10 +22,10 @@ pub trait IntoLabels {
 
 impl<'src> IntoLabels for Spanned<CodegenError<'src>> {
     fn into_label(self, src_id: String) -> Vec<Label<(String, Range<usize>)>> {
-        use CodegenError as E;
+        use CodegenError as Error;
 
         match self {
-            (E::RedeclaredVariable(name, initial_span), err_span) => {
+            (Error::RedeclaredVariable(name, initial_span), err_span) => {
                 vec![
                     Label::new((src_id.clone(), initial_span.into_range()))
                         .with_message(format!(
@@ -39,7 +39,7 @@ impl<'src> IntoLabels for Spanned<CodegenError<'src>> {
                 ]
             }
 
-            (E::UndeclaredVariable(name), err_span) => {
+            (Error::UndeclaredVariable(name), err_span) => {
                 vec![Label::new((src_id.clone(), err_span.into_range()))
                     .with_message(format!(
                         "variable '{}' not found in current scope",
@@ -48,7 +48,7 @@ impl<'src> IntoLabels for Spanned<CodegenError<'src>> {
                     .with_color(Color::Red)]
             }
 
-            (E::InvalidAssignmentTarget, span) => {
+            (Error::InvalidAssignmentTarget, span) => {
                 vec![Label::new((src_id.clone(), span.into_range()))
                     .with_message("unable to assign to this")
                     .with_color(Color::Red)]
@@ -59,8 +59,7 @@ impl<'src> IntoLabels for Spanned<CodegenError<'src>> {
 pub trait Codegen<'src> {
     fn code_gen(
         self,
-        label_idx: &mut usize,
-        stack_ptr: &mut isize,
-        env: &mut HashMap<String, (isize, Span)>,
+        label_index: &mut usize,
+        env: &mut Environment<'src>,
     ) -> Result<String, Spanned<CodegenError<'src>>>;
 }
