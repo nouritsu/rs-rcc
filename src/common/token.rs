@@ -5,6 +5,8 @@ pub enum Token<'src> {
     /* Keywords */
     Int,
     Return,
+    If,
+    Else,
 
     /* Literals */
     LitInteger(u64),
@@ -60,6 +62,10 @@ pub enum Token<'src> {
     LeftShiftEquals,
     RightShiftEquals,
 
+    // Conditional Operators
+    Colon,
+    Question,
+
     //Control
     Semicolon,
 }
@@ -107,6 +113,10 @@ impl<'src> Display for Token<'src> {
             Self::RightShiftEquals => write!(f, ">>="),
             Self::Percent => write!(f, "%"),
             Self::PercentEquals => write!(f, "%="),
+            Self::If => write!(f, "if"),
+            Self::Else => write!(f, "else"),
+            Self::Question => write!(f, "?"),
+            Self::Colon => write!(f, ":"),
         }
     }
 }
