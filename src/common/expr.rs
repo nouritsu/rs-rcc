@@ -236,3 +236,19 @@ impl<'src> Expr<'src> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_as_lvalue() {
+        // Test case: Variable expression
+        let expr = Expr::Variable("x");
+        assert_eq!(expr.as_lvalue(), Some("x"));
+
+        // Test case: Non-variable expression
+        let expr = Expr::LiteralInteger(42);
+        assert_eq!(expr.as_lvalue(), None);
+    }
+}

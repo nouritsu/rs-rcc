@@ -49,3 +49,42 @@ impl Display for LabelKind {
         }
     }
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn create() {
+        let mut tracker = LabelTracker::new();
+        let label = tracker.create(LabelKind::Or);
+        assert_eq!(label, "or_0");
+        let label = tracker.create(LabelKind::OrShortCircuit);
+        assert_eq!(label, "or_ss_0");
+        let label = tracker.create(LabelKind::And);
+        assert_eq!(label, "and_0");
+        let label = tracker.create(LabelKind::AndShortCircuit);
+        assert_eq!(label, "and_ss_0");
+    }
+
+    #[test]
+    fn index() {
+        let tracker = LabelTracker::new();
+        assert_eq!(tracker.index(LabelKind::Or), 0);
+        assert_eq!(tracker.index(LabelKind::OrShortCircuit), 0);
+        assert_eq!(tracker.index(LabelKind::And), 0);
+        assert_eq!(tracker.index(LabelKind::AndShortCircuit), 0);
+    }
+
+    #[test]
+    fn increment() {
+        let mut tracker = LabelTracker::new();
+        tracker.increment(LabelKind::Or);
+        assert_eq!(tracker.index(LabelKind::Or), 1);
+        tracker.increment(LabelKind::OrShortCircuit);
+        assert_eq!(tracker.index(LabelKind::OrShortCircuit), 1);
+        tracker.increment(LabelKind::And);
+        assert_eq!(tracker.index(LabelKind::And), 1);
+        tracker.increment(LabelKind::AndShortCircuit);
+        assert_eq!(tracker.index(LabelKind::AndShortCircuit), 1);
+    }
+}

@@ -132,3 +132,87 @@ impl BinaryOperator {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn is_compound_assignment() {
+        assert!(BinaryOperator::PlusEquals.is_compound_assignment());
+        assert!(BinaryOperator::MinusEquals.is_compound_assignment());
+        assert!(BinaryOperator::MultiplyEquals.is_compound_assignment());
+        assert!(BinaryOperator::DivideEquals.is_compound_assignment());
+        assert!(BinaryOperator::ModEquals.is_compound_assignment());
+        assert!(BinaryOperator::AndEquals.is_compound_assignment());
+        assert!(BinaryOperator::OrEquals.is_compound_assignment());
+        assert!(BinaryOperator::XorEquals.is_compound_assignment());
+        assert!(BinaryOperator::LeftShiftEquals.is_compound_assignment());
+        assert!(BinaryOperator::RightShiftEquals.is_compound_assignment());
+
+        assert!(!BinaryOperator::Plus.is_compound_assignment());
+        assert!(!BinaryOperator::Minus.is_compound_assignment());
+        assert!(!BinaryOperator::Multiply.is_compound_assignment());
+        assert!(!BinaryOperator::Divide.is_compound_assignment());
+        assert!(!BinaryOperator::Mod.is_compound_assignment());
+        assert!(!BinaryOperator::BitwiseAnd.is_compound_assignment());
+        assert!(!BinaryOperator::BitwiseOr.is_compound_assignment());
+        assert!(!BinaryOperator::BitwiseXor.is_compound_assignment());
+        assert!(!BinaryOperator::LeftShift.is_compound_assignment());
+        assert!(!BinaryOperator::RightShift.is_compound_assignment());
+    }
+
+    #[test]
+    fn compound_to_operator() {
+        assert_eq!(
+            BinaryOperator::PlusEquals.compound_to_operator(),
+            Some(BinaryOperator::Plus)
+        );
+        assert_eq!(
+            BinaryOperator::MinusEquals.compound_to_operator(),
+            Some(BinaryOperator::Minus)
+        );
+        assert_eq!(
+            BinaryOperator::MultiplyEquals.compound_to_operator(),
+            Some(BinaryOperator::Multiply)
+        );
+        assert_eq!(
+            BinaryOperator::DivideEquals.compound_to_operator(),
+            Some(BinaryOperator::Divide)
+        );
+        assert_eq!(
+            BinaryOperator::ModEquals.compound_to_operator(),
+            Some(BinaryOperator::Mod)
+        );
+        assert_eq!(
+            BinaryOperator::AndEquals.compound_to_operator(),
+            Some(BinaryOperator::BitwiseAnd)
+        );
+        assert_eq!(
+            BinaryOperator::OrEquals.compound_to_operator(),
+            Some(BinaryOperator::BitwiseOr)
+        );
+        assert_eq!(
+            BinaryOperator::XorEquals.compound_to_operator(),
+            Some(BinaryOperator::BitwiseXor)
+        );
+        assert_eq!(
+            BinaryOperator::LeftShiftEquals.compound_to_operator(),
+            Some(BinaryOperator::LeftShift)
+        );
+        assert_eq!(
+            BinaryOperator::RightShiftEquals.compound_to_operator(),
+            Some(BinaryOperator::RightShift)
+        );
+        assert_eq!(BinaryOperator::Plus.compound_to_operator(), None);
+        assert_eq!(BinaryOperator::Minus.compound_to_operator(), None);
+        assert_eq!(BinaryOperator::Multiply.compound_to_operator(), None);
+        assert_eq!(BinaryOperator::Divide.compound_to_operator(), None);
+        assert_eq!(BinaryOperator::Mod.compound_to_operator(), None);
+        assert_eq!(BinaryOperator::BitwiseAnd.compound_to_operator(), None);
+        assert_eq!(BinaryOperator::BitwiseOr.compound_to_operator(), None);
+        assert_eq!(BinaryOperator::BitwiseXor.compound_to_operator(), None);
+        assert_eq!(BinaryOperator::LeftShift.compound_to_operator(), None);
+        assert_eq!(BinaryOperator::RightShift.compound_to_operator(), None);
+    }
+}

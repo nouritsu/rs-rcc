@@ -36,10 +36,11 @@ impl<'src> Codegen<'src> for Spanned<Stmt<'src>> {
                 expr.code_gen(lt, env)? + "\tmov %rbp, %rsp\n\tpop %rbp\n\tret\n"
             }
 
-            (Stmt::Declare((name, name_span), expr), span) => {
+            (Stmt::Declare(name, expr), _) => {
+                let (name, name_span) = name;
                 if env.contains(name) {
                     let (_, init_span) = env.get(name).expect("infallible");
-                    return Err((CodegenError::RedeclaredVariable(name, init_span), span));
+                    return Err((CodegenError::RedeclaredVariable(name, init_span), name_span));
                 }
 
                 let asm = format!(
