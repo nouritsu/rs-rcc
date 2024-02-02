@@ -139,12 +139,14 @@ fn expr<'tokens, 'src: 'tokens>() -> impl Parser<
         Token::LitInteger(i) => Expr::LiteralInteger(i),
     }
     .map_with(|expr, e| (expr, e.span()))
+    .boxed()
     .labelled("value");
 
     let variable = select! {
         Token::Identifier(v) => Expr::Variable(v),
     }
     .map_with(|expr, e| (expr, e.span()))
+    .boxed()
     .labelled("variable");
 
     let atom = recursive(|expr| {
@@ -153,8 +155,8 @@ fn expr<'tokens, 'src: 'tokens>() -> impl Parser<
                 .clone()
                 .delimited_by(just(Token::OpenParen), just(Token::CloseParen)))
             .or(variable)
-            .boxed()
-    });
+    })
+    .boxed();
 
     let unary = just(Token::Minus)
         .or(just(Token::Exclamation))
