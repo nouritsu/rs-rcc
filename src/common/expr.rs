@@ -1,8 +1,6 @@
-use crate::common::helper::LabelKind;
-
 use super::{
-    helper::LabelTracker, BinaryOperator, Codegen, CodegenError, Desugar, Environment, Spanned,
-    UnaryOperator,
+    helper::{LabelKind, LabelTracker},
+    BinaryOperator, Codegen, CodegenError, Desugar, Environment, Spanned, UnaryOperator,
 };
 
 #[derive(Debug, Clone)]
@@ -18,7 +16,7 @@ impl<'src> Codegen<'src> for Vec<Spanned<Expr<'src>>> {
         self,
         lt: &mut LabelTracker,
         env: &mut Environment<'src>,
-    ) -> Result<String, super::Spanned<CodegenError<'src>>> {
+    ) -> Result<String, Spanned<CodegenError<'src>>> {
         Ok(self
             .into_iter()
             .map(|expr| expr.code_gen(lt, env))
@@ -243,11 +241,9 @@ mod tests {
 
     #[test]
     fn test_as_lvalue() {
-        // Test case: Variable expression
         let expr = Expr::Variable("x");
         assert_eq!(expr.as_lvalue(), Some("x"));
 
-        // Test case: Non-variable expression
         let expr = Expr::LiteralInteger(42);
         assert_eq!(expr.as_lvalue(), None);
     }
