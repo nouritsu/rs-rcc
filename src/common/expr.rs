@@ -9,6 +9,7 @@ pub enum Expr<'src> {
     Variable(&'src str),
     Unary(UnaryOperator, Box<Spanned<Self>>),
     Binary(Box<Spanned<Self>>, BinaryOperator, Box<Spanned<Self>>),
+    Ternary(Box<Spanned<Self>>, Box<Spanned<Self>>, Box<Spanned<Self>>),
 }
 
 impl<'src> Codegen<'src> for Vec<Spanned<Expr<'src>>> {
@@ -195,14 +196,16 @@ impl<'src> Codegen<'src> for Spanned<Expr<'src>> {
                 )
             }
 
-            (Expr::Binary(lhs, op, rhs), _) if op.is_compound_assignment() => {
-                (Expr::Binary(lhs, op, rhs), self.1)
+            (Expr::Binary(lhs, op, rhs), span) if op.is_compound_assignment() => {
+                (Expr::Binary(lhs, op, rhs), span)
                     .desugar()
                     .expect("infallible")
                     .code_gen(lt, env)?
             }
 
             (Expr::Binary(_, _, _), _) => unreachable!("reached binary _ branch in codegen"),
+
+            (Expr::Ternary(_condition, _a, _b), _span) => todo!(),
         })
     }
 }
