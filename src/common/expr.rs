@@ -1,6 +1,6 @@
 use super::{
     helper::{LabelKind, LabelTracker},
-    BinaryOperator, Codegen, CodegenError, Desugar, Environment, Spanned, UnaryOperator,
+    BinaryOperator, Codegen, CodegenError, Desugar, Environment, Span, Spanned, UnaryOperator,
 };
 
 #[derive(Debug, Clone)]
@@ -226,6 +226,33 @@ impl<'src> Desugar<Spanned<Expr<'src>>> for Spanned<Expr<'src>> {
 
             _ => return None,
         })
+    }
+}
+
+impl<'src> Expr<'src> {
+    pub fn new_unary(op: UnaryOperator, rhs: Spanned<Self>, span: Span) -> Spanned<Self> {
+        (Expr::Unary(op, Box::new(rhs)), span)
+    }
+
+    pub fn new_binary(
+        lhs: Spanned<Self>,
+        op: BinaryOperator,
+        rhs: Spanned<Self>,
+        span: Span,
+    ) -> Spanned<Self> {
+        (Expr::Binary(Box::new(lhs), op, Box::new(rhs)), span)
+    }
+
+    pub fn new_ternary(
+        cond: Spanned<Self>,
+        a: Spanned<Self>,
+        b: Spanned<Self>,
+        span: Span,
+    ) -> Spanned<Self> {
+        (
+            Expr::Ternary(Box::new(cond), Box::new(a), Box::new(b)),
+            span,
+        )
     }
 }
 
