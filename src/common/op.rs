@@ -2,6 +2,7 @@ use super::Token;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum UnaryOperator {
+    Plus,
     Minus,
     LogicalNot,
     BitwiseNot,
@@ -12,6 +13,7 @@ impl TryFrom<Token<'_>> for UnaryOperator {
 
     fn try_from(value: Token<'_>) -> Result<Self, Self::Error> {
         Ok(match value {
+            Token::Plus => Self::Plus,
             Token::Minus => Self::Minus,
             Token::Exclamation => Self::LogicalNot,
             Token::Tilde => Self::BitwiseNot,

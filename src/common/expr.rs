@@ -45,6 +45,8 @@ impl<'src> Codegen<'src> for Spanned<Expr<'src>> {
             }
 
             /* Unary */
+            (Expr::Unary(UnaryOperator::Plus, rhs), _) => rhs.code_gen(lt, env)?,
+
             (Expr::Unary(UnaryOperator::Minus, rhs), _) => rhs.code_gen(lt, env)? + "\tneg %rax\n",
 
             (Expr::Unary(UnaryOperator::LogicalNot, rhs), _) => {

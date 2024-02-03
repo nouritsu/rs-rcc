@@ -149,174 +149,177 @@ fn expr<'tokens, 'src: 'tokens>() -> impl Parser<
     .boxed()
     .labelled("variable");
 
-    let atom = recursive(|expr| {
-        literal
+    recursive(|expr| {
+        let atom = literal
             .or(expr
                 .clone()
                 .delimited_by(just(Token::OpenParen), just(Token::CloseParen)))
             .or(variable)
-    })
-    .boxed();
+            .boxed();
 
-    let unary = just(Token::Minus)
-        .or(just(Token::Exclamation))
-        .or(just(Token::Tilde))
+        let unary = choice((
+            just(Token::Plus),
+            just(Token::Minus),
+            just(Token::Exclamation),
+            just(Token::Tilde),
+        ))
         .repeated()
         .foldr_with(atom, |op, rhs, e| {
             Expr::new_unary(op.try_into().expect("infallible"), rhs, e.span())
         })
         .boxed();
 
-    let product = unary
-        .clone()
-        .foldl_with(
-            choice((just(Token::Slash), just(Token::Star), just(Token::Percent)))
-                .then(unary)
+        let product = unary
+            .clone()
+            .foldl_with(
+                choice((just(Token::Slash), just(Token::Star), just(Token::Percent)))
+                    .then(unary)
+                    .repeated(),
+                |lhs, (op, rhs), e| {
+                    Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
+                },
+            )
+            .boxed();
+
+        let sum = product
+            .clone()
+            .foldl_with(
+                choice((just(Token::Plus), just(Token::Minus)))
+                    .then(product)
+                    .repeated(),
+                |lhs, (op, rhs), e| {
+                    Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
+                },
+            )
+            .boxed();
+
+        let shifts = sum
+            .clone()
+            .foldl_with(
+                choice((just(Token::LeftShift), just(Token::RightShift)))
+                    .then(sum)
+                    .repeated(),
+                |lhs, (op, rhs), e| {
+                    Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
+                },
+            )
+            .boxed();
+
+        let gtgeltle = shifts
+            .clone()
+            .foldl_with(
+                choice((
+                    just(Token::GreaterEquals),
+                    just(Token::LesserEquals),
+                    just(Token::GreaterThan),
+                    just(Token::LesserThan),
+                ))
+                .then(shifts)
                 .repeated(),
-            |lhs, (op, rhs), e| {
-                Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
-            },
-        )
-        .boxed();
+                |lhs, (op, rhs), e| {
+                    Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
+                },
+            )
+            .boxed();
 
-    let sum = product
-        .clone()
-        .foldl_with(
-            choice((just(Token::Plus), just(Token::Minus)))
-                .then(product)
+        let eqne = gtgeltle
+            .clone()
+            .foldl_with(
+                choice((just(Token::NotEquals), just(Token::EqualsEquals)))
+                    .then(gtgeltle)
+                    .repeated(),
+                |lhs, (op, rhs), e| {
+                    Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
+                },
+            )
+            .boxed();
+
+        let bw_and = eqne
+            .clone()
+            .foldl_with(
+                just(Token::And).then(eqne).repeated(),
+                |lhs, (op, rhs), e| {
+                    Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
+                },
+            )
+            .boxed();
+
+        let bw_xor = bw_and
+            .clone()
+            .foldl_with(
+                just(Token::Caret).then(bw_and).repeated(),
+                |lhs, (op, rhs), e| {
+                    Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
+                },
+            )
+            .boxed();
+
+        let bw_or = bw_xor
+            .clone()
+            .foldl_with(
+                just(Token::Pipe).then(bw_xor).repeated(),
+                |lhs, (op, rhs), e| {
+                    Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
+                },
+            )
+            .boxed();
+
+        let lg_and = bw_or
+            .clone()
+            .foldl_with(
+                just(Token::AndAnd).then(bw_or).repeated(),
+                |lhs, (op, rhs), e| {
+                    Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
+                },
+            )
+            .boxed();
+
+        let lg_or = lg_and
+            .clone()
+            .foldl_with(
+                just(Token::PipePipe).then(lg_and).repeated(),
+                |lhs, (op, rhs), e| {
+                    Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
+                },
+            )
+            .boxed();
+
+        let ternary = lg_or
+            .clone()
+            .foldl_with(
+                just(Token::Question)
+                    .ignore_then(lg_or.clone())
+                    .then_ignore(just(Token::Colon))
+                    .then(lg_or)
+                    .repeated(),
+                |cond, (a, b), e| Expr::new_ternary(cond, a, b, e.span()),
+            )
+            .boxed();
+
+        let assignment = ternary
+            .clone()
+            .foldl_with(
+                choice((
+                    just(Token::Equals),
+                    just(Token::PlusEquals),
+                    just(Token::MinusEquals),
+                    just(Token::StarEquals),
+                    just(Token::SlashEquals),
+                    just(Token::PercentEquals),
+                    just(Token::AndEquals),
+                    just(Token::PipeEquals),
+                    just(Token::CaretEquals),
+                    just(Token::LeftShiftEquals),
+                    just(Token::RightShiftEquals),
+                ))
+                .then(ternary)
                 .repeated(),
-            |lhs, (op, rhs), e| {
-                Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
-            },
-        )
-        .boxed();
+                |lhs, (op, rhs), e| {
+                    Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
+                },
+            )
+            .boxed();
 
-    let shifts = sum
-        .clone()
-        .foldl_with(
-            choice((just(Token::LeftShift), just(Token::RightShift)))
-                .then(sum)
-                .repeated(),
-            |lhs, (op, rhs), e| {
-                Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
-            },
-        )
-        .boxed();
-
-    let gtgeltle = shifts
-        .clone()
-        .foldl_with(
-            choice((
-                just(Token::GreaterEquals),
-                just(Token::LesserEquals),
-                just(Token::GreaterThan),
-                just(Token::LesserThan),
-            ))
-            .then(shifts)
-            .repeated(),
-            |lhs, (op, rhs), e| {
-                Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
-            },
-        )
-        .boxed();
-
-    let eqne = gtgeltle
-        .clone()
-        .foldl_with(
-            choice((just(Token::NotEquals), just(Token::EqualsEquals)))
-                .then(gtgeltle)
-                .repeated(),
-            |lhs, (op, rhs), e| {
-                Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
-            },
-        )
-        .boxed();
-
-    let bw_and = eqne
-        .clone()
-        .foldl_with(
-            just(Token::And).then(eqne).repeated(),
-            |lhs, (op, rhs), e| {
-                Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
-            },
-        )
-        .boxed();
-
-    let bw_xor = bw_and
-        .clone()
-        .foldl_with(
-            just(Token::Caret).then(bw_and).repeated(),
-            |lhs, (op, rhs), e| {
-                Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
-            },
-        )
-        .boxed();
-
-    let bw_or = bw_xor
-        .clone()
-        .foldl_with(
-            just(Token::Pipe).then(bw_xor).repeated(),
-            |lhs, (op, rhs), e| {
-                Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
-            },
-        )
-        .boxed();
-
-    let lg_and = bw_or
-        .clone()
-        .foldl_with(
-            just(Token::AndAnd).then(bw_or).repeated(),
-            |lhs, (op, rhs), e| {
-                Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
-            },
-        )
-        .boxed();
-
-    let lg_or = lg_and
-        .clone()
-        .foldl_with(
-            just(Token::PipePipe).then(lg_and).repeated(),
-            |lhs, (op, rhs), e| {
-                Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
-            },
-        )
-        .boxed();
-
-    let ternary = lg_or
-        .clone()
-        .foldl_with(
-            just(Token::Question)
-                .ignore_then(lg_or.clone())
-                .then_ignore(just(Token::Colon))
-                .then(lg_or)
-                .repeated(),
-            |cond, (a, b), e| Expr::new_ternary(cond, a, b, e.span()),
-        )
-        .boxed();
-
-    let assignment = ternary
-        .clone()
-        .foldl_with(
-            choice((
-                just(Token::Equals),
-                just(Token::PlusEquals),
-                just(Token::MinusEquals),
-                just(Token::StarEquals),
-                just(Token::SlashEquals),
-                just(Token::PercentEquals),
-                just(Token::AndEquals),
-                just(Token::PipeEquals),
-                just(Token::CaretEquals),
-                just(Token::LeftShiftEquals),
-                just(Token::RightShiftEquals),
-            ))
-            .then(ternary)
-            .repeated(),
-            |lhs, (op, rhs), e| {
-                Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
-            },
-        )
-        .boxed();
-
-    assignment.labelled("expression")
+        assignment.labelled("expression")
+    })
 }
