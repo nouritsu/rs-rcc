@@ -4,10 +4,16 @@ use clap::error::Result;
 
 #[derive(Debug)]
 pub enum Stmt<'src> {
-    Return(Spanned<Expr<'src>>),
-    Declare(Spanned<&'src str>, Option<Spanned<Expr<'src>>>),
+    Block(Vec<Spanned<Self>>),
     Expression(Spanned<Expr<'src>>),
+    Declare(Spanned<&'src str>, Option<Spanned<Expr<'src>>>),
+    If(
+        Spanned<Expr<'src>>,
+        Box<Spanned<Self>>,
+        Option<Box<Spanned<Self>>>,
+    ),
     Function(&'src str, Vec<Spanned<Self>>),
+    Return(Spanned<Expr<'src>>),
 }
 
 impl<'src> Codegen<'src> for Vec<Spanned<Stmt<'src>>> {
@@ -32,9 +38,9 @@ impl<'src> Codegen<'src> for Spanned<Stmt<'src>> {
         env: &mut Environment<'src>,
     ) -> Result<String, Spanned<CodegenError<'src>>> {
         Ok(match self {
-            (Stmt::Return(expr), _) => {
-                expr.code_gen(lt, env)? + "\tmov %rbp, %rsp\n\tpop %rbp\n\tret\n"
-            }
+            (Stmt::Block(stmts), _) => stmts.code_gen(lt, env)?,
+
+            (Stmt::Expression(expr), _) => expr.code_gen(lt, env)?,
 
             (Stmt::Declare(name, expr), _) => {
                 let (name, name_span) = name;
@@ -55,7 +61,7 @@ impl<'src> Codegen<'src> for Spanned<Stmt<'src>> {
                 asm
             }
 
-            (Stmt::Expression(expr), _) => expr.code_gen(lt, env)?,
+            (Stmt::If(_condition, _then, _else), _span) => todo!(),
 
             (Stmt::Function(name, body), _) => {
                 format!(
@@ -68,6 +74,9 @@ impl<'src> Codegen<'src> for Spanned<Stmt<'src>> {
                         .into_iter()
                         .fold(String::new(), |s, x| s + &x)
                 )
+            }
+            (Stmt::Return(expr), _) => {
+                expr.code_gen(lt, env)? + "\tmov %rbp, %rsp\n\tpop %rbp\n\tret\n"
             }
         })
     }
