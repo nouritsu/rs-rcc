@@ -93,6 +93,11 @@ fn stmt<'tokens, 'src: 'tokens>() -> impl Parser<
 > + Clone {
     let ident = select! { Token::Identifier(s) => s }.labelled("identifier");
 
+    let stmt_expr = expr()
+        .then_ignore(just(Token::Semicolon))
+        .map_with(|expr, e| (Stmt::Expression(expr), e.span()))
+        .boxed();
+
     let stmt_return = just(Token::Return)
         .ignore_then(expr())
         .then_ignore(just(Token::Semicolon))
@@ -104,11 +109,6 @@ fn stmt<'tokens, 'src: 'tokens>() -> impl Parser<
         .then(just(Token::Equals).ignore_then(expr()).or_not())
         .then_ignore(just(Token::Semicolon))
         .map_with(|((_ty, ident), expr), e| (Stmt::Declare(ident, expr), e.span()))
-        .boxed();
-
-    let stmt_expr = expr()
-        .then_ignore(just(Token::Semicolon))
-        .map_with(|expr, e| (Stmt::Expression(expr), e.span()))
         .boxed();
 
     let stmt_fun = just(Token::Int)
@@ -163,10 +163,7 @@ fn expr<'tokens, 'src: 'tokens>() -> impl Parser<
         .or(just(Token::Tilde))
         .repeated()
         .foldr_with(atom, |op, rhs, e| {
-            (
-                Expr::Unary(op.try_into().expect("infallible"), Box::new(rhs)),
-                e.span(),
-            )
+            Expr::new_unary(op.try_into().expect("infallible"), rhs, e.span())
         })
         .boxed();
 
@@ -177,14 +174,7 @@ fn expr<'tokens, 'src: 'tokens>() -> impl Parser<
                 .then(unary)
                 .repeated(),
             |lhs, (op, rhs), e| {
-                (
-                    Expr::Binary(
-                        Box::new(lhs),
-                        op.try_into().expect("infallible"),
-                        Box::new(rhs),
-                    ),
-                    e.span(),
-                )
+                Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
             },
         )
         .boxed();
@@ -196,14 +186,7 @@ fn expr<'tokens, 'src: 'tokens>() -> impl Parser<
                 .then(product)
                 .repeated(),
             |lhs, (op, rhs), e| {
-                (
-                    Expr::Binary(
-                        Box::new(lhs),
-                        op.try_into().expect("infallible"),
-                        Box::new(rhs),
-                    ),
-                    e.span(),
-                )
+                Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
             },
         )
         .boxed();
@@ -215,14 +198,7 @@ fn expr<'tokens, 'src: 'tokens>() -> impl Parser<
                 .then(sum)
                 .repeated(),
             |lhs, (op, rhs), e| {
-                (
-                    Expr::Binary(
-                        Box::new(lhs),
-                        op.try_into().expect("infallible"),
-                        Box::new(rhs),
-                    ),
-                    e.span(),
-                )
+                Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
             },
         )
         .boxed();
@@ -239,14 +215,7 @@ fn expr<'tokens, 'src: 'tokens>() -> impl Parser<
             .then(shifts)
             .repeated(),
             |lhs, (op, rhs), e| {
-                (
-                    Expr::Binary(
-                        Box::new(lhs),
-                        op.try_into().expect("infallible"),
-                        Box::new(rhs),
-                    ),
-                    e.span(),
-                )
+                Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
             },
         )
         .boxed();
@@ -258,14 +227,7 @@ fn expr<'tokens, 'src: 'tokens>() -> impl Parser<
                 .then(gtgeltle)
                 .repeated(),
             |lhs, (op, rhs), e| {
-                (
-                    Expr::Binary(
-                        Box::new(lhs),
-                        op.try_into().expect("infallible"),
-                        Box::new(rhs),
-                    ),
-                    e.span(),
-                )
+                Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
             },
         )
         .boxed();
@@ -275,14 +237,7 @@ fn expr<'tokens, 'src: 'tokens>() -> impl Parser<
         .foldl_with(
             just(Token::And).then(eqne).repeated(),
             |lhs, (op, rhs), e| {
-                (
-                    Expr::Binary(
-                        Box::new(lhs),
-                        op.try_into().expect("infallible"),
-                        Box::new(rhs),
-                    ),
-                    e.span(),
-                )
+                Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
             },
         )
         .boxed();
@@ -292,14 +247,7 @@ fn expr<'tokens, 'src: 'tokens>() -> impl Parser<
         .foldl_with(
             just(Token::Caret).then(bw_and).repeated(),
             |lhs, (op, rhs), e| {
-                (
-                    Expr::Binary(
-                        Box::new(lhs),
-                        op.try_into().expect("infallible"),
-                        Box::new(rhs),
-                    ),
-                    e.span(),
-                )
+                Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
             },
         )
         .boxed();
@@ -309,14 +257,7 @@ fn expr<'tokens, 'src: 'tokens>() -> impl Parser<
         .foldl_with(
             just(Token::Pipe).then(bw_xor).repeated(),
             |lhs, (op, rhs), e| {
-                (
-                    Expr::Binary(
-                        Box::new(lhs),
-                        op.try_into().expect("infallible"),
-                        Box::new(rhs),
-                    ),
-                    e.span(),
-                )
+                Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
             },
         )
         .boxed();
@@ -326,14 +267,7 @@ fn expr<'tokens, 'src: 'tokens>() -> impl Parser<
         .foldl_with(
             just(Token::AndAnd).then(bw_or).repeated(),
             |lhs, (op, rhs), e| {
-                (
-                    Expr::Binary(
-                        Box::new(lhs),
-                        op.try_into().expect("infallible"),
-                        Box::new(rhs),
-                    ),
-                    e.span(),
-                )
+                Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
             },
         )
         .boxed();
@@ -343,14 +277,7 @@ fn expr<'tokens, 'src: 'tokens>() -> impl Parser<
         .foldl_with(
             just(Token::PipePipe).then(lg_and).repeated(),
             |lhs, (op, rhs), e| {
-                (
-                    Expr::Binary(
-                        Box::new(lhs),
-                        op.try_into().expect("infallible"),
-                        Box::new(rhs),
-                    ),
-                    e.span(),
-                )
+                Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
             },
         )
         .boxed();
@@ -363,12 +290,7 @@ fn expr<'tokens, 'src: 'tokens>() -> impl Parser<
                 .then_ignore(just(Token::Colon))
                 .then(lg_or)
                 .repeated(),
-            |cond, (a, b), e| {
-                (
-                    Expr::Ternary(Box::new(cond), Box::new(a), Box::new(b)),
-                    e.span(),
-                )
-            },
+            |cond, (a, b), e| Expr::new_ternary(cond, a, b, e.span()),
         )
         .boxed();
 
@@ -391,14 +313,7 @@ fn expr<'tokens, 'src: 'tokens>() -> impl Parser<
             .then(ternary)
             .repeated(),
             |lhs, (op, rhs), e| {
-                (
-                    Expr::Binary(
-                        Box::new(lhs),
-                        op.try_into().expect("infallible"),
-                        Box::new(rhs),
-                    ),
-                    e.span(),
-                )
+                Expr::new_binary(lhs, op.try_into().expect("infallible"), rhs, e.span())
             },
         )
         .boxed();
