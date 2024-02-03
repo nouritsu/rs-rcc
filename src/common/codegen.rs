@@ -27,33 +27,32 @@ impl<'src> IntoLabels for Spanned<CodegenError<'src>> {
         match self {
             (Error::RedeclaredVariable(name, initial_span), err_span) => {
                 vec![
-                    Label::new((src_id.clone(), initial_span.into_range()))
-                        .with_message(format!(
-                            "variable '{}' initially declared here",
-                            name.bright_black()
-                        ))
-                        .with_color(Color::Red),
+                    Label::new((src_id.clone(), initial_span.into_range())).with_message(format!(
+                        "variable '{}' initially declared here",
+                        name.bright_black()
+                    )),
                     Label::new((src_id, err_span.into_range()))
-                        .with_message(format!("declared '{}' again here", name.bright_black()))
-                        .with_color(Color::Red),
+                        .with_message(format!("declared '{}' again here", name.bright_black())),
                 ]
             }
 
             (Error::UndeclaredVariable(name), err_span) => {
-                vec![Label::new((src_id.clone(), err_span.into_range()))
-                    .with_message(format!(
+                vec![
+                    Label::new((src_id.clone(), err_span.into_range())).with_message(format!(
                         "variable '{}' not found in current scope",
                         name.bright_black()
-                    ))
-                    .with_color(Color::Red)]
+                    )),
+                ]
             }
 
             (Error::InvalidAssignmentTarget, span) => {
                 vec![Label::new((src_id.clone(), span.into_range()))
-                    .with_message("unable to assign to this")
-                    .with_color(Color::Red)]
+                    .with_message("unable to assign to this")]
             }
         }
+        .into_iter()
+        .map(|label| label.with_color(Color::Red))
+        .collect()
     }
 }
 pub trait Codegen<'src> {
