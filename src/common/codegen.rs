@@ -1,4 +1,4 @@
-use super::{env::Environment, helper::LabelTracker, Span, Spanned};
+use super::{env::Environment, label_tracker::LabelTracker, Span, Spanned};
 use ariadne::{Color, Label};
 use color_eyre::owo_colors::OwoColorize;
 use std::ops::Range;

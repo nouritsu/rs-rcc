@@ -10,6 +10,10 @@ impl LabelTracker {
             (LabelKind::OrShortCircuit, 0),
             (LabelKind::And, 0),
             (LabelKind::AndShortCircuit, 0),
+            (LabelKind::TernaryElse, 0),
+            (LabelKind::TernaryEnd, 0),
+            (LabelKind::IfElse, 0),
+            (LabelKind::IfEnd, 0),
         ]);
         assert_eq!(hm.len(), LabelKind::COUNT);
         Self(hm)
@@ -37,6 +41,10 @@ pub enum LabelKind {
     OrShortCircuit,
     And,
     AndShortCircuit,
+    TernaryElse,
+    TernaryEnd,
+    IfElse,
+    IfEnd,
 }
 
 impl Display for LabelKind {
@@ -46,6 +54,10 @@ impl Display for LabelKind {
             LabelKind::OrShortCircuit => write!(f, "or_ss"),
             LabelKind::And => write!(f, "and"),
             LabelKind::AndShortCircuit => write!(f, "and_ss"),
+            LabelKind::TernaryElse => write!(f, "cond_else"),
+            LabelKind::TernaryEnd => write!(f, "cond_end"),
+            LabelKind::IfElse => write!(f, "if_else"),
+            LabelKind::IfEnd => write!(f, "if_end"),
         }
     }
 }

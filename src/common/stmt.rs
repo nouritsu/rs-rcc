@@ -1,5 +1,6 @@
-use super::{env::Environment, helper::LabelTracker, Codegen, CodegenError};
+use super::{env::Environment, label_tracker::LabelTracker, Codegen, CodegenError};
 use super::{Expr, Spanned};
+use crate::common::label_tracker::LabelKind;
 use clap::error::Result;
 
 #[derive(Debug)]
@@ -12,8 +13,8 @@ pub enum Stmt<'src> {
         Box<Spanned<Self>>,
         Option<Box<Spanned<Self>>>,
     ),
-    Function(&'src str, Vec<Spanned<Self>>),
     Return(Spanned<Expr<'src>>),
+    Empty,
 }
 
 impl<'src> Codegen<'src> for Vec<Spanned<Stmt<'src>>> {
@@ -61,23 +62,31 @@ impl<'src> Codegen<'src> for Spanned<Stmt<'src>> {
                 asm
             }
 
-            (Stmt::If(_condition, _then, _else), _span) => todo!(),
+            (Stmt::If(condition, then, r#else), _span) => {
+                let els = &lt.create(LabelKind::TernaryElse);
+                let end = &lt.create(LabelKind::TernaryEnd);
+                let else_exists = r#else.is_some();
 
-            (Stmt::Function(name, body), _) => {
                 format!(
-                    "\t.globl {}\n{}:\n\tpush %rbp\n\tmov %rsp, %rbp\n{}",
-                    name,
-                    name,
-                    body.into_iter()
+                    "{}\tcmp $0, %rax\n\tje {}\n{}\tjmp {}\n{}{}:\n",
+                    condition.code_gen(lt, env)?,
+                    if else_exists { els } else { end },
+                    then.code_gen(lt, env)?,
+                    end,
+                    r#else
                         .map(|stmt| stmt.code_gen(lt, env))
-                        .collect::<Result<Vec<_>, _>>()?
-                        .into_iter()
-                        .fold(String::new(), |s, x| s + &x)
+                        .transpose()?
+                        .map(|asm| format!("{}:\n{}", els, asm))
+                        .unwrap_or(String::new()),
+                    end,
                 )
             }
+
             (Stmt::Return(expr), _) => {
                 expr.code_gen(lt, env)? + "\tmov %rbp, %rsp\n\tpop %rbp\n\tret\n"
             }
+
+            (Stmt::Empty, _) => String::new(),
         })
     }
 }

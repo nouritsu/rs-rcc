@@ -1,5 +1,5 @@
 use super::{
-    helper::{LabelKind, LabelTracker},
+    label_tracker::{LabelKind, LabelTracker},
     BinaryOperator, Codegen, CodegenError, Desugar, Environment, Span, Spanned, UnaryOperator,
 };
 
@@ -207,7 +207,20 @@ impl<'src> Codegen<'src> for Spanned<Expr<'src>> {
 
             (Expr::Binary(_, _, _), _) => unreachable!("reached binary _ branch in codegen"),
 
-            (Expr::Ternary(_condition, _a, _b), _span) => todo!(),
+            (Expr::Ternary(condition, a, b), _span) => {
+                let els = lt.create(LabelKind::TernaryElse);
+                let end = lt.create(LabelKind::TernaryEnd);
+                format!(
+                    "{}\tcmp $0, %rax\n\tje {}\n{}\tjmp {}\n{}:\n{}{}:\n",
+                    condition.code_gen(lt, env)?,
+                    els,
+                    a.code_gen(lt, env)?,
+                    end,
+                    els,
+                    b.code_gen(lt, env)?,
+                    end,
+                )
+            }
         })
     }
 }

@@ -26,8 +26,7 @@ pub fn lexer<'src>(
         // Controls
         just(";").to(Token::Semicolon),
         /* Operators */
-        // Assignment Operators
-        just("=").to(Token::Equals),
+        // Compound Assignment Operators
         just("+=").to(Token::PlusEquals),
         just("-=").to(Token::MinusEquals),
         just("*=").to(Token::StarEquals),
@@ -45,7 +44,6 @@ pub fn lexer<'src>(
         just("/").to(Token::Slash),
         just("%").to(Token::Percent),
         // Logical Operators
-        just("!").to(Token::Exclamation),
         just("&&").to(Token::AndAnd),
         just("||").to(Token::PipePipe),
         // Bitwise Operators
@@ -65,6 +63,10 @@ pub fn lexer<'src>(
         // Conditional Operators
         just("?").to(Token::Question),
         just(":").to(Token::Colon),
+        // Assignment Operator
+        just("=").to(Token::Equals),
+        // Logical Not
+        just("!").to(Token::Exclamation),
     ])
     .boxed();
 

@@ -1,4 +1,4 @@
-use crate::common::{Expr, Span, Spanned, Stmt, Token};
+use crate::common::{decl::FnDeclaration, Expr, Span, Spanned, Stmt, Token};
 use chumsky::prelude::*;
 
 /*
@@ -78,10 +78,21 @@ type ParserInput<'tokens, 'src> =
 pub fn parser<'tokens, 'src: 'tokens>() -> impl Parser<
     'tokens,
     ParserInput<'tokens, 'src>,
-    Vec<Spanned<Stmt<'src>>>,
+    Vec<Spanned<FnDeclaration<'src>>>,
     extra::Err<Rich<'tokens, Token<'src>, Span>>,
 > + Clone {
-    stmt().repeated().collect().labelled("program")
+    let ident = select! { Token::Identifier(s) => s }.labelled("identifier");
+
+    let fn_decl = just(Token::Int)
+        .then(ident)
+        .then_ignore(just(Token::OpenParen))
+        .then_ignore(just(Token::CloseParen))
+        .then(stmt().repeated().collect())
+        .map_with(|((_ty, name), body), e| (FnDeclaration(name, body), e.span()))
+        .labelled("function")
+        .boxed();
+
+    fn_decl.repeated().collect().labelled("program")
 }
 
 /* Statements */
@@ -93,39 +104,57 @@ fn stmt<'tokens, 'src: 'tokens>() -> impl Parser<
 > + Clone {
     let ident = select! { Token::Identifier(s) => s }.labelled("identifier");
 
-    let stmt_expr = expr()
-        .then_ignore(just(Token::Semicolon))
-        .map_with(|expr, e| (Stmt::Expression(expr), e.span()))
-        .boxed();
+    recursive(|stmt| {
+        let stmt_block = stmt
+            .clone()
+            .repeated()
+            .collect()
+            .delimited_by(just(Token::OpenBrace), just(Token::CloseBrace))
+            .map_with(|stmts, e| (Stmt::Block(stmts), e.span()));
 
-    let stmt_return = just(Token::Return)
-        .ignore_then(expr())
-        .then_ignore(just(Token::Semicolon))
-        .map_with(|expr, e| (Stmt::Return(expr), e.span()))
-        .boxed();
+        let stmt_expr = expr()
+            .then_ignore(just(Token::Semicolon))
+            .map_with(|expr, e| (Stmt::Expression(expr), e.span()))
+            .boxed();
 
-    let stmt_declare = just(Token::Int)
-        .then(ident.map_with(|ident, e| (ident, e.span())))
-        .then(just(Token::Equals).ignore_then(expr()).or_not())
-        .then_ignore(just(Token::Semicolon))
-        .map_with(|((_ty, ident), expr), e| (Stmt::Declare(ident, expr), e.span()))
-        .boxed();
+        let stmt_return = just(Token::Return)
+            .ignore_then(expr())
+            .then_ignore(just(Token::Semicolon))
+            .map_with(|expr, e| (Stmt::Return(expr), e.span()))
+            .boxed();
 
-    let stmt_fun = just(Token::Int)
-        .then(ident)
-        .then_ignore(just(Token::OpenParen))
-        .then_ignore(just(Token::CloseParen))
-        .then(
-            choice((stmt_declare, stmt_return, stmt_expr))
-                .repeated()
-                .collect()
-                .delimited_by(just(Token::OpenBrace), just(Token::CloseBrace)),
-        )
-        .map_with(|((_ty, name), body), e| (Stmt::Function(name, body), e.span()))
-        .labelled("function")
-        .boxed();
+        let stmt_declare = just(Token::Int)
+            .then(ident.map_with(|ident, e| (ident, e.span())))
+            .then(just(Token::Equals).ignore_then(expr()).or_not())
+            .then_ignore(just(Token::Semicolon))
+            .map_with(|((_ty, ident), expr), e| (Stmt::Declare(ident, expr), e.span()))
+            .boxed();
 
-    stmt_fun
+        let stmt_if = just(Token::If)
+            .ignore_then(just(Token::OpenParen))
+            .ignore_then(expr())
+            .then_ignore(just(Token::CloseParen))
+            .then(stmt.clone())
+            .then(just(Token::Else).ignore_then(stmt.clone()).or_not())
+            .map_with(|((cond, then), r#else), e| {
+                (
+                    Stmt::If(cond, Box::new(then), r#else.map(|stmt| Box::new(stmt))),
+                    e.span(),
+                )
+            });
+
+        let stmt_empty = just(Token::Semicolon).map_with(|_, e| (Stmt::Empty, e.span()));
+
+        choice((
+            stmt_if,
+            stmt_block,
+            stmt_expr,
+            stmt_return,
+            stmt_declare,
+            stmt_empty,
+        ))
+        .labelled("statement")
+    })
 }
 
 /* Expressions */
