@@ -61,6 +61,7 @@ impl Display for LabelKind {
         }
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -76,6 +77,14 @@ mod tests {
         assert_eq!(label, "and_0");
         let label = tracker.create(LabelKind::AndShortCircuit);
         assert_eq!(label, "and_ss_0");
+        let label = tracker.create(LabelKind::TernaryElse);
+        assert_eq!(label, "cond_else_0");
+        let label = tracker.create(LabelKind::TernaryEnd);
+        assert_eq!(label, "cond_end_0");
+        let label = tracker.create(LabelKind::IfElse);
+        assert_eq!(label, "if_else_0");
+        let label = tracker.create(LabelKind::IfEnd);
+        assert_eq!(label, "if_end_0");
     }
 
     #[test]
@@ -85,6 +94,10 @@ mod tests {
         assert_eq!(tracker.index(LabelKind::OrShortCircuit), 0);
         assert_eq!(tracker.index(LabelKind::And), 0);
         assert_eq!(tracker.index(LabelKind::AndShortCircuit), 0);
+        assert_eq!(tracker.index(LabelKind::TernaryElse), 0);
+        assert_eq!(tracker.index(LabelKind::TernaryEnd), 0);
+        assert_eq!(tracker.index(LabelKind::IfElse), 0);
+        assert_eq!(tracker.index(LabelKind::IfEnd), 0);
     }
 
     #[test]
@@ -98,5 +111,13 @@ mod tests {
         assert_eq!(tracker.index(LabelKind::And), 1);
         tracker.increment(LabelKind::AndShortCircuit);
         assert_eq!(tracker.index(LabelKind::AndShortCircuit), 1);
+        tracker.increment(LabelKind::TernaryElse);
+        assert_eq!(tracker.index(LabelKind::TernaryElse), 1);
+        tracker.increment(LabelKind::TernaryEnd);
+        assert_eq!(tracker.index(LabelKind::TernaryEnd), 1);
+        tracker.increment(LabelKind::IfElse);
+        assert_eq!(tracker.index(LabelKind::IfElse), 1);
+        tracker.increment(LabelKind::IfEnd);
+        assert_eq!(tracker.index(LabelKind::IfEnd), 1);
     }
 }
