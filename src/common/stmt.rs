@@ -39,7 +39,13 @@ impl<'src> Codegen<'src> for Spanned<Stmt<'src>> {
         env: &mut Environment<'src>,
     ) -> Result<String, Spanned<CodegenError<'src>>> {
         Ok(match self {
-            (Stmt::Block(stmts), _) => stmts.code_gen(lt, env)?,
+            (Stmt::Block(stmts), _) => {
+                env.new_scope();
+                let asm = stmts.code_gen(lt, env)?;
+                env.end_scope();
+
+                asm
+            }
 
             (Stmt::Expression(expr), _) => expr.code_gen(lt, env)?,
 
@@ -62,7 +68,7 @@ impl<'src> Codegen<'src> for Spanned<Stmt<'src>> {
                 asm
             }
 
-            (Stmt::If(condition, then, r#else), _span) => {
+            (Stmt::If(condition, then, r#else), _) => {
                 let els = &lt.create(LabelKind::TernaryElse);
                 let end = &lt.create(LabelKind::TernaryEnd);
                 let else_exists = r#else.is_some();

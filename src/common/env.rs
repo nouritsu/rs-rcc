@@ -5,7 +5,7 @@ const WORD_IN_BYTES: isize = 8;
 
 #[derive(Debug, Clone)]
 pub struct Environment<'src> {
-    sp: isize,
+    pub sp: isize,
     envs: Vec<HashMap<&'src str, (isize, Span)>>,
 }
 
@@ -13,7 +13,7 @@ impl<'src> Environment<'src> {
     pub fn new() -> Self {
         Self {
             sp: 0,
-            envs: vec![HashMap::new()],
+            envs: vec![],
         }
     }
 
@@ -36,12 +36,7 @@ impl<'src> Environment<'src> {
     }
 
     pub fn contains(&self, key: &str) -> bool {
-        self.envs
-            .iter()
-            .last()
-            .map(|env| env.get(key))
-            .flatten()
-            .is_some()
+        self.get(key).is_some()
     }
 
     pub fn new_scope(&mut self) {
@@ -49,10 +44,14 @@ impl<'src> Environment<'src> {
     }
 
     pub fn end_scope(&mut self) -> bool {
-        self.envs.len() != 1 && self.envs.pop().is_some()
+        !self.envs.is_empty() && self.envs.pop().is_some()
     }
 
     fn decrement_sp(&mut self) {
         self.sp -= WORD_IN_BYTES;
+    }
+
+    fn _increment_sp(&mut self) {
+        self.sp += WORD_IN_BYTES;
     }
 }
