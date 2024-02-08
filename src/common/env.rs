@@ -43,8 +43,14 @@ impl<'src> Environment<'src> {
         self.envs.push(HashMap::new())
     }
 
-    pub fn end_scope(&mut self) -> bool {
-        !self.envs.is_empty() && self.envs.pop().is_some()
+    pub fn end_scope(&mut self) -> Option<isize> {
+        (!self.envs.is_empty())
+            .then_some(
+                self.envs
+                    .pop()
+                    .map(|env| env.len() as isize * WORD_IN_BYTES),
+            )
+            .flatten()
     }
 
     fn decrement_sp(&mut self) {

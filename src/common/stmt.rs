@@ -44,7 +44,8 @@ impl<'src> Codegen<'src> for Spanned<Stmt<'src>> {
             (Stmt::Block(stmts), _) => {
                 env.new_scope();
                 stmts.code_gen(lt, em, env)?;
-                env.end_scope();
+                let deallocate = env.end_scope().expect("infallible");
+                em.emit_instr(&format!("add ${}, %rsp", deallocate));
             }
 
             (Stmt::Expression(expr), _) => expr.code_gen(lt, em, env)?,
