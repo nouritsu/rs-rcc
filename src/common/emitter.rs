@@ -29,3 +29,57 @@ impl Emitter {
         self.0.join("\n") + "\n"
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new() {
+        let emitter = Emitter::new();
+        assert_eq!(emitter.0, Vec::<String>::new());
+    }
+
+    #[test]
+    fn emit() {
+        let mut emitter = Emitter::new();
+        emitter.emit("test");
+        assert_eq!(emitter.0, vec!["test"]);
+    }
+
+    #[test]
+    fn emit_tabbed() {
+        let mut emitter = Emitter::new();
+        emitter.emit_tabbed(2, "test");
+        assert_eq!(emitter.0, vec!["\t\ttest"]);
+    }
+
+    #[test]
+    fn emit_label() {
+        let mut emitter = Emitter::new();
+        emitter.emit_label("test");
+        assert_eq!(emitter.0, vec!["test:"]);
+    }
+
+    #[test]
+    fn emit_instr() {
+        let mut emitter = Emitter::new();
+        emitter.emit_instr("test");
+        assert_eq!(emitter.0, vec!["\ttest"]);
+    }
+
+    #[test]
+    fn emit_directive() {
+        let mut emitter = Emitter::new();
+        emitter.emit_directive("test");
+        assert_eq!(emitter.0, vec!["\ttest"]);
+    }
+
+    #[test]
+    fn collect() {
+        let mut emitter = Emitter::new();
+        emitter.emit("test1");
+        emitter.emit("test2");
+        assert_eq!(emitter.collect(), "test1\ntest2\n");
+    }
+}
