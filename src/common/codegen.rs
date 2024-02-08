@@ -1,4 +1,4 @@
-use super::{env::Environment, label_tracker::LabelTracker, Span, Spanned};
+use super::{emitter::Emitter, env::Environment, label_tracker::LabelTracker, Span, Spanned};
 use ariadne::{Color, Label};
 use color_eyre::owo_colors::OwoColorize;
 use std::ops::Range;
@@ -59,6 +59,7 @@ pub trait Codegen<'src> {
     fn code_gen(
         self,
         lt: &mut LabelTracker,
+        em: &mut Emitter,
         env: &mut Environment<'src>,
-    ) -> Result<String, Spanned<CodegenError<'src>>>;
+    ) -> Result<(), Spanned<CodegenError<'src>>>;
 }
