@@ -1,4 +1,5 @@
 use super::{
+    emitter::Emitter,
     label_tracker::{LabelKind, LabelTracker},
     BinaryOperator, Codegen, CodegenError, Desugar, Environment, Span, Spanned, UnaryOperator,
 };
@@ -16,14 +17,13 @@ impl<'src> Codegen<'src> for Vec<Spanned<Expr<'src>>> {
     fn code_gen(
         self,
         lt: &mut LabelTracker,
+        em: &mut Emitter,
         env: &mut Environment<'src>,
-    ) -> Result<String, Spanned<CodegenError<'src>>> {
-        Ok(self
-            .into_iter()
-            .map(|expr| expr.code_gen(lt, env))
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .fold(String::new(), |s, x| s + &x))
+    ) -> Result<(), Spanned<CodegenError<'src>>> {
+        self.into_iter()
+            .map(|expr| expr.code_gen(lt, em, env))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(())
     }
 }
 
@@ -31,155 +31,219 @@ impl<'src> Codegen<'src> for Spanned<Expr<'src>> {
     fn code_gen(
         self,
         lt: &mut LabelTracker,
+        em: &mut Emitter,
         env: &mut Environment<'src>,
-    ) -> Result<String, Spanned<CodegenError<'src>>> {
-        Ok(match self {
-            (Expr::LiteralInteger(i), _) => format!("\tmov ${}, %rax\n", i),
+    ) -> Result<(), Spanned<CodegenError<'src>>> {
+        match self {
+            (Expr::LiteralInteger(i), _) => {
+                em.emit_instr(&format!("mov ${}, %rax", i));
+            }
 
             (Expr::Variable(name), span) => {
                 let (offset, _) = env
                     .get(name)
                     .ok_or((CodegenError::UndeclaredVariable(name), span))?;
 
-                format!("\tmov {}(%rbp), %rax\n", offset)
+                em.emit_instr(&format!("mov {}(%rbp), %rax", offset));
             }
 
             /* Unary */
-            (Expr::Unary(UnaryOperator::Plus, rhs), _) => rhs.code_gen(lt, env)?,
+            (Expr::Unary(UnaryOperator::Plus, rhs), _) => rhs.code_gen(lt, em, env)?,
 
-            (Expr::Unary(UnaryOperator::Minus, rhs), _) => rhs.code_gen(lt, env)? + "\tneg %rax\n",
+            (Expr::Unary(UnaryOperator::Minus, rhs), _) => {
+                rhs.code_gen(lt, em, env)?;
+                em.emit_instr("neg %rax");
+            }
 
             (Expr::Unary(UnaryOperator::LogicalNot, rhs), _) => {
-                rhs.code_gen(lt, env)? + "\tcmpl $0, %rax\n\tmov $0, %rax\n\tsete %al\n"
+                rhs.code_gen(lt, em, env)?;
+                em.emit_instr("cmpl $0, %rax");
+                em.emit_instr("mov $0, %rax");
+                em.emit_instr("sete %al");
             }
 
             (Expr::Unary(UnaryOperator::BitwiseNot, rhs), _) => {
-                rhs.code_gen(lt, env)? + "\tnot %rax\n"
+                rhs.code_gen(lt, em, env)?;
+                em.emit_instr("not %rax");
             }
 
             /* Binary */
-            // Math Os
-            (Expr::Binary(lhs, BinaryOperator::Plus, rhs), _) => format!(
-                "{}\tpush %rax\n{}\tpop %rcx\n\tadd %rcx, %rax\n",
-                lhs.code_gen(lt, env)?,
-                rhs.code_gen(lt, env)?,
-            ),
+            // Math Ops
+            (Expr::Binary(lhs, BinaryOperator::Plus, rhs), _) => {
+                lhs.code_gen(lt, em, env)?;
+                em.emit_instr("push %rax");
+                rhs.code_gen(lt, em, env)?;
+                em.emit_instr("pop %rcx");
+                em.emit_instr("add %rcx, %rax");
+            }
 
-            (Expr::Binary(lhs, BinaryOperator::Multiply, rhs), _) => format!(
-                "{}\tpush %rax\n{}\tpop %rcx\n\timul %rcx, %rax\n",
-                lhs.code_gen(lt, env)?,
-                rhs.code_gen(lt, env)?,
-            ),
+            (Expr::Binary(lhs, BinaryOperator::Multiply, rhs), _) => {
+                lhs.code_gen(lt, em, env)?;
+                em.emit_instr("push %rax");
+                rhs.code_gen(lt, em, env)?;
+                em.emit_instr("pop %rcx");
+                em.emit_instr("imul %rcx, %rax");
+            }
 
-            (Expr::Binary(lhs, BinaryOperator::Minus, rhs), _) => format!(
-                "{}\tpush %rax\n{}\tpop %rcx\n\tsub %rcx, %rax\n",
-                rhs.code_gen(lt, env)?,
-                lhs.code_gen(lt, env)?,
-            ),
+            (Expr::Binary(lhs, BinaryOperator::Minus, rhs), _) => {
+                rhs.code_gen(lt, em, env)?;
+                em.emit_instr("push %rax");
+                lhs.code_gen(lt, em, env)?;
+                em.emit_instr("pop %rcx");
+                em.emit_instr("sub %rax, %rcx");
+            }
 
-            (Expr::Binary(lhs, BinaryOperator::Divide, rhs), _) => format!(
-                "{}\tpush %rax\n{}\tpop %rcx\n\tcqo\n\tidiv %rcx\n",
-                rhs.code_gen(lt, env)?,
-                lhs.code_gen(lt, env)?,
-            ),
+            (Expr::Binary(lhs, BinaryOperator::Divide, rhs), _) => {
+                rhs.code_gen(lt, em, env)?;
+                em.emit_instr("push %rax");
+                lhs.code_gen(lt, em, env)?;
+                em.emit_instr("pop %rcx");
+                em.emit_instr("cqo");
+                em.emit_instr("idiv %rcx");
+            }
 
-            (Expr::Binary(lhs, BinaryOperator::Mod, rhs), _) => format!(
-                "{}\tpush %rax\n{}\tpop %rcx\n\tcqo\n\tidiv %rcx\n\tmov %rdx, %rax\n",
-                rhs.code_gen(lt, env)?,
-                lhs.code_gen(lt, env)?,
-            ),
+            (Expr::Binary(lhs, BinaryOperator::Mod, rhs), _) => {
+                rhs.code_gen(lt, em, env)?;
+                em.emit_instr("push %rax");
+                lhs.code_gen(lt, em, env)?;
+                em.emit_instr("pop %rcx");
+                em.emit_instr("cqo");
+                em.emit_instr("idiv %rcx");
+                em.emit_instr("mov %rdx, %rax");
+            }
 
-            (Expr::Binary(lhs, BinaryOperator::EqEq, rhs), _) => format!(
-                "{}\tpush %rax\n{}\tpop %rcx\n\tcmp %rax, %rcx\n\tmov $0, %rax\n\tsete %al\n",
-                lhs.code_gen(lt, env)?,
-                rhs.code_gen(lt, env)?,
-            ),
+            (Expr::Binary(lhs, BinaryOperator::EqEq, rhs), _) => {
+                lhs.code_gen(lt, em, env)?;
+                em.emit_instr("push %rax");
+                rhs.code_gen(lt, em, env)?;
+                em.emit_instr("pop %rcx");
+                em.emit_instr("cmp %rax, %rcx");
+                em.emit_instr("mov $0, %rax");
+                em.emit_instr("sete %al");
+            }
 
-            (Expr::Binary(lhs, BinaryOperator::Ne, rhs), _) => format!(
-                "{}\tpush %rax\n{}\tpop %rcx\n\tcmp %rax, %rcx\n\tmov $0, %rax\n\tsetne %al\n",
-                lhs.code_gen(lt, env)?,
-                rhs.code_gen(lt, env)?,
-            ),
+            (Expr::Binary(lhs, BinaryOperator::Ne, rhs), _) => {
+                lhs.code_gen(lt, em, env)?;
+                em.emit_instr("push %rax");
+                rhs.code_gen(lt, em, env)?;
+                em.emit_instr("pop %rcx");
+                em.emit_instr("cmp %rax, %rcx");
+                em.emit_instr("mov $0, %rax");
+                em.emit_instr("setne %al");
+            }
 
-            (Expr::Binary(lhs, BinaryOperator::Ge, rhs), _) => format!(
-                "{}\tpush %rax\n{}\tpop %rcx\n\tcmp %rax, %rcx\n\tmov $0, %rax\n\tsetge %al\n",
-                lhs.code_gen(lt, env)?,
-                rhs.code_gen(lt, env)?,
-            ),
+            (Expr::Binary(lhs, BinaryOperator::Ge, rhs), _) => {
+                lhs.code_gen(lt, em, env)?;
+                em.emit_instr("push %rax");
+                rhs.code_gen(lt, em, env)?;
+                em.emit_instr("pop %rcx");
+                em.emit_instr("cmp %rax, %rcx");
+                em.emit_instr("mov $0, %rax");
+                em.emit_instr("setge %al");
+            }
 
-            (Expr::Binary(lhs, BinaryOperator::Gt, rhs), _) => format!(
-                "{}push %rax\n{}\tpop %rcx\n\tcmp %rax, %rcx\n\tmov $0, %rax\n\tsetg %al\n",
-                lhs.code_gen(lt, env)?,
-                rhs.code_gen(lt, env)?,
-            ),
+            (Expr::Binary(lhs, BinaryOperator::Gt, rhs), _) => {
+                lhs.code_gen(lt, em, env)?;
+                em.emit_instr("push %rax");
+                rhs.code_gen(lt, em, env)?;
+                em.emit_instr("pop %rcx");
+                em.emit_instr("cmp %rax, %rcx");
+                em.emit_instr("mov $0, %rax");
+                em.emit_instr("setg %al");
+            }
 
-            (Expr::Binary(lhs, BinaryOperator::Le, rhs), _) => format!(
-                "{}\tpush %rax\n{}\tpop %rcx\n\tcmp %rax, %rcx\n\tmov $0, %rax\n\tsetle %al\n",
-                lhs.code_gen(lt, env)?,
-                rhs.code_gen(lt, env)?,
-            ),
+            (Expr::Binary(lhs, BinaryOperator::Le, rhs), _) => {
+                lhs.code_gen(lt, em, env)?;
+                em.emit_instr("push %rax");
+                rhs.code_gen(lt, em, env)?;
+                em.emit_instr("pop %rcx");
+                em.emit_instr("cmp %rax, %rcx");
+                em.emit_instr("mov $0, %rax");
+                em.emit_instr("setle %al");
+            }
 
-            (Expr::Binary(lhs, BinaryOperator::Lt, rhs), _) => format!(
-                "{}\tpush %rax\n{}\tpop %rcx\n\tcmp %rax, %rcx\n\tmov $0, %rax\n\tsetl %al\n",
-                lhs.code_gen(lt, env)?,
-                rhs.code_gen(lt, env)?,
-            ),
+            (Expr::Binary(lhs, BinaryOperator::Lt, rhs), _) => {
+                lhs.code_gen(lt, em, env)?;
+                em.emit_instr("push %rax");
+                rhs.code_gen(lt, em, env)?;
+                em.emit_instr("pop %rcx");
+                em.emit_instr("cmp %rax, %rcx");
+                em.emit_instr("mov $0, %rax");
+                em.emit_instr("setl %al");
+            }
 
             (Expr::Binary(lhs, BinaryOperator::LogicalAnd, rhs), _) => {
                 let l1 = lt.create(LabelKind::And);
                 let l2 = lt.create(LabelKind::AndShortCircuit);
 
-                format!(
-                        "{}\tcmp $0, %rax\n\tjne {}\n\tjmp {}\n{}:\n{}\tcmp $0, %rax\n\tmov $0, %rax\n\tsetne %al\n{}:\n",
-                        lhs.code_gen(lt, env)?,
-                        l1, l2, l1,
-                        rhs.code_gen(lt, env)?,
-                        l2,
-                    )
+                lhs.code_gen(lt, em, env)?;
+                em.emit_instr("cmp $0, %rax");
+                em.emit_instr(&format!("jne {}", l1));
+                em.emit_instr(&format!("jmp {}", l2));
+                em.emit_label(&l1);
+                rhs.code_gen(lt, em, env)?;
+                em.emit_instr("cmp $0, %rax");
+                em.emit_instr("mov $0, %rax");
+                em.emit_instr("setne %al");
+                em.emit_label(&l2);
             }
 
             (Expr::Binary(lhs, BinaryOperator::LogicalOr, rhs), _) => {
                 let l1 = lt.create(LabelKind::Or);
                 let l2 = lt.create(LabelKind::OrShortCircuit);
 
-                format!(
-                        "{}\tcmp $0, %rax\n\tje {}\n\tmov $1, %rax\n\tjmp {}\n{}:\n{}\tcmp $0, %rax\n\tmov $0, %rax\n\tsetne %al\n{}:\n",
-                        lhs.code_gen(lt, env)?,
-                        l1, l2, l1,
-                        rhs.code_gen(lt, env)?,
-                        l2
-                    )
+                lhs.code_gen(lt, em, env)?;
+                em.emit_instr("cmp $0, %rax");
+                em.emit_instr(&format!("je {}", l1));
+                em.emit_instr("mov $1, %rax");
+                em.emit_instr(&format!("jmp {}", l2));
+                em.emit_label(&l1);
+                rhs.code_gen(lt, em, env)?;
+                em.emit_instr("cmp $0, %rax");
+                em.emit_instr("mov $0, %rax");
+                em.emit_instr("setne %al");
+                em.emit_label(&l2);
             }
 
-            (Expr::Binary(lhs, BinaryOperator::BitwiseAnd, rhs), _) => format!(
-                "{}\tpush %rax\n{}\tpop %rcx\n\tand %rcx, %rax\n",
-                lhs.code_gen(lt, env)?,
-                rhs.code_gen(lt, env)?,
-            ),
+            (Expr::Binary(lhs, BinaryOperator::BitwiseAnd, rhs), _) => {
+                lhs.code_gen(lt, em, env)?;
+                em.emit_instr("push %rax");
+                rhs.code_gen(lt, em, env)?;
+                em.emit_instr("pop %rcx");
+                em.emit_instr("and %rcx, %rax");
+            }
 
-            (Expr::Binary(lhs, BinaryOperator::BitwiseOr, rhs), _) => format!(
-                "{}\tpush %rax\n{}\tpop %rcx\n\tor %rcx, %rax\n",
-                lhs.code_gen(lt, env)?,
-                rhs.code_gen(lt, env)?,
-            ),
+            (Expr::Binary(lhs, BinaryOperator::BitwiseOr, rhs), _) => {
+                lhs.code_gen(lt, em, env)?;
+                em.emit_instr("push %rax");
+                rhs.code_gen(lt, em, env)?;
+                em.emit_instr("pop %rcx");
+                em.emit_instr("or %rcx, %rax");
+            }
 
-            (Expr::Binary(lhs, BinaryOperator::BitwiseXor, rhs), _) => format!(
-                "{}\tpush %rax\n{}\tpop %rcx\n\txor %rcx, %rax\n",
-                lhs.code_gen(lt, env)?,
-                rhs.code_gen(lt, env)?,
-            ),
+            (Expr::Binary(lhs, BinaryOperator::BitwiseXor, rhs), _) => {
+                lhs.code_gen(lt, em, env)?;
+                em.emit_instr("push %rax");
+                rhs.code_gen(lt, em, env)?;
+                em.emit_instr("pop %rcx");
+                em.emit_instr("xor %rcx, %rax");
+            }
 
-            (Expr::Binary(lhs, BinaryOperator::LeftShift, rhs), _) => format!(
-                "{}\tpush %rax\n{}\tpop %rcx\n\tshl %rcx, %rax\n",
-                rhs.code_gen(lt, env)?,
-                lhs.code_gen(lt, env)?,
-            ),
+            (Expr::Binary(lhs, BinaryOperator::LeftShift, rhs), _) => {
+                rhs.code_gen(lt, em, env)?;
+                em.emit_instr("push %rax");
+                lhs.code_gen(lt, em, env)?;
+                em.emit_instr("pop %rcx");
+                em.emit_instr("shl %rcx, %rax");
+            }
 
-            (Expr::Binary(lhs, BinaryOperator::RightShift, rhs), _) => format!(
-                "{}\tpush %rax\n{}\tpop %rcx\n\tshr %rcx, %rax\n",
-                rhs.code_gen(lt, env)?,
-                lhs.code_gen(lt, env)?,
-            ),
+            (Expr::Binary(lhs, BinaryOperator::RightShift, rhs), _) => {
+                rhs.code_gen(lt, em, env)?;
+                em.emit_instr("push %rax");
+                lhs.code_gen(lt, em, env)?;
+                em.emit_instr("pop %rcx");
+                em.emit_instr("shr %rcx, %rax");
+            }
 
             (Expr::Binary(lhs, BinaryOperator::Eq, rhs), _) => {
                 let var = lhs
@@ -191,18 +255,15 @@ impl<'src> Codegen<'src> for Spanned<Expr<'src>> {
                     .get(var)
                     .ok_or((CodegenError::UndeclaredVariable(var), lhs.1))?;
 
-                format!(
-                    "{}\tmov %rax, {}(%rbp)\n",
-                    rhs.code_gen(lt, env)?,
-                    var_offset,
-                )
+                rhs.code_gen(lt, em, env)?;
+                em.emit_instr(&format!("mov %rax, {}(%rbp)", var_offset));
             }
 
             (Expr::Binary(lhs, op, rhs), span) if op.is_compound_assignment() => {
                 (Expr::Binary(lhs, op, rhs), span)
                     .desugar()
                     .expect("infallible")
-                    .code_gen(lt, env)?
+                    .code_gen(lt, em, env)?
             }
 
             (Expr::Binary(_, _, _), _) => unreachable!("reached binary _ branch in codegen"),
@@ -210,18 +271,18 @@ impl<'src> Codegen<'src> for Spanned<Expr<'src>> {
             (Expr::Ternary(condition, a, b), _span) => {
                 let els = lt.create(LabelKind::TernaryElse);
                 let end = lt.create(LabelKind::TernaryEnd);
-                format!(
-                    "{}\tcmp $0, %rax\n\tje {}\n{}\tjmp {}\n{}:\n{}{}:\n",
-                    condition.code_gen(lt, env)?,
-                    els,
-                    a.code_gen(lt, env)?,
-                    end,
-                    els,
-                    b.code_gen(lt, env)?,
-                    end,
-                )
+
+                condition.code_gen(lt, em, env)?;
+                em.emit_instr("cmp $0, %rax");
+                em.emit_instr(&format!("je {}", els));
+                a.code_gen(lt, em, env)?;
+                em.emit_instr(&format!("jmp {}", end));
+                em.emit_label(&els);
+                b.code_gen(lt, em, env)?;
+                em.emit_label(&end);
             }
-        })
+        }
+        Ok(())
     }
 }
 

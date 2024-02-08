@@ -1,4 +1,6 @@
-use super::{env::Environment, label_tracker::LabelTracker, Codegen, CodegenError};
+use super::{
+    emitter::Emitter, env::Environment, label_tracker::LabelTracker, Codegen, CodegenError,
+};
 use super::{Expr, Spanned};
 use crate::common::label_tracker::LabelKind;
 use clap::error::Result;
@@ -21,14 +23,13 @@ impl<'src> Codegen<'src> for Vec<Spanned<Stmt<'src>>> {
     fn code_gen(
         self,
         lt: &mut LabelTracker,
+        em: &mut Emitter,
         env: &mut Environment<'src>,
-    ) -> Result<String, Spanned<CodegenError<'src>>> {
-        Ok(self
-            .into_iter()
-            .map(|stmt| stmt.code_gen(lt, env))
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .fold(String::new(), |s, x| s + &x))
+    ) -> Result<(), Spanned<CodegenError<'src>>> {
+        self.into_iter()
+            .map(|stmt| stmt.code_gen(lt, em, env))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(())
     }
 }
 
@@ -36,36 +37,31 @@ impl<'src> Codegen<'src> for Spanned<Stmt<'src>> {
     fn code_gen(
         self,
         lt: &mut LabelTracker,
+        em: &mut Emitter,
         env: &mut Environment<'src>,
-    ) -> Result<String, Spanned<CodegenError<'src>>> {
-        Ok(match self {
+    ) -> Result<(), Spanned<CodegenError<'src>>> {
+        match self {
             (Stmt::Block(stmts), _) => {
                 env.new_scope();
-                let asm = stmts.code_gen(lt, env)?;
+                stmts.code_gen(lt, em, env)?;
                 env.end_scope();
-
-                asm
             }
 
-            (Stmt::Expression(expr), _) => expr.code_gen(lt, env)?,
+            (Stmt::Expression(expr), _) => expr.code_gen(lt, em, env)?,
 
-            (Stmt::Declare(name, expr), _) => {
-                let (name, name_span) = name;
+            (Stmt::Declare((name, name_span), expr), _) => {
                 if env.contains(name) {
                     let (_, init_span) = env.get(name).expect("infallible");
                     return Err((CodegenError::RedeclaredVariable(name, init_span), name_span));
                 }
 
-                let asm = format!(
-                    "{}\tpush %rax\n",
-                    expr.map(|e| e.code_gen(lt, env))
-                        .transpose()?
-                        .unwrap_or("\tmov $0, %rax\n".to_string())
-                );
+                match expr {
+                    Some(expr) => expr.code_gen(lt, em, env)?,
+                    None => em.emit_instr("mov $0, %rax"),
+                }
+                em.emit_instr("push %rax");
 
                 env.put(name, name_span);
-
-                asm
             }
 
             (Stmt::If(condition, then, r#else), _) => {
@@ -73,26 +69,27 @@ impl<'src> Codegen<'src> for Spanned<Stmt<'src>> {
                 let end = &lt.create(LabelKind::TernaryEnd);
                 let else_exists = r#else.is_some();
 
-                format!(
-                    "{}\tcmp $0, %rax\n\tje {}\n{}\tjmp {}\n{}{}:\n",
-                    condition.code_gen(lt, env)?,
-                    if else_exists { els } else { end },
-                    then.code_gen(lt, env)?,
-                    end,
-                    r#else
-                        .map(|stmt| stmt.code_gen(lt, env))
-                        .transpose()?
-                        .map(|asm| format!("{}:\n{}", els, asm))
-                        .unwrap_or(String::new()),
-                    end,
-                )
+                condition.code_gen(lt, em, env)?;
+                em.emit_instr("cmp $0, %rax");
+                em.emit_instr(&format!("je {}", if else_exists { els } else { end }));
+                then.code_gen(lt, em, env)?;
+                em.emit_instr(&format!("jmp {}", end));
+                if let Some(r#else) = r#else {
+                    em.emit_label(els);
+                    r#else.code_gen(lt, em, env)?;
+                }
+                em.emit_label(end);
             }
 
             (Stmt::Return(expr), _) => {
-                expr.code_gen(lt, env)? + "\tmov %rbp, %rsp\n\tpop %rbp\n\tret\n"
+                expr.code_gen(lt, em, env)?;
+                em.emit_instr("mov %rbp, %rsp");
+                em.emit_instr("pop %rbp");
+                em.emit_instr("ret");
             }
 
-            (Stmt::Empty, _) => String::new(),
-        })
+            (Stmt::Empty, _) => {}
+        }
+        Ok(())
     }
 }
