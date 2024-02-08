@@ -3,8 +3,10 @@ use chumsky::{input::Input, Parser};
 use clap::Parser as CLParser;
 use color_eyre::eyre;
 use rcc::{
-    common::codegen::IntoLabels,
-    common::{env::Environment, label_tracker::LabelTracker, Codegen},
+    common::{
+        codegen::IntoLabels, emitter::Emitter, env::Environment, label_tracker::LabelTracker,
+        Codegen,
+    },
     lexer::lexer,
     parser::parser,
 };
@@ -47,8 +49,10 @@ fn main() -> eyre::Result<()> {
                     println!("{:#?}", fns);
                 }
 
-                match fns.code_gen(&mut LabelTracker::new(), &mut Environment::new()) {
-                    Ok(asm) => fs::write(args.output, asm)?,
+                let mut em = Emitter::new();
+
+                match fns.code_gen(&mut LabelTracker::new(), &mut em, &mut Environment::new()) {
+                    Ok(()) => fs::write(args.output, em.collect())?,
                     Err((err, span)) => {
                         Report::build(ReportKind::Error, file_name.clone(), span.start)
                             .with_message(err.to_string())
