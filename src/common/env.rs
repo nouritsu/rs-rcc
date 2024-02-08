@@ -20,13 +20,13 @@ impl<'src> Environment<'src> {
     pub fn put(&mut self, key: &'src str, span: Span) -> bool {
         self.decrement_sp();
         (!self.contains(key))
-            .then(|| {
+            .then_some(
                 self.envs
                     .iter_mut()
                     .last()
                     .map(|env| env.insert(key, (self.sp, span)))
-                    .flatten()
-            })
+                    .flatten(),
+            )
             .flatten()
             .is_none()
     }
