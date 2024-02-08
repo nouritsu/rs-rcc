@@ -1,6 +1,7 @@
 pub mod codegen;
 pub mod decl;
 pub mod desugar;
+pub mod emitter;
 pub mod env;
 pub mod expr;
 pub mod label_tracker;
